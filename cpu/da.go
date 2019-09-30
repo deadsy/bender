@@ -18,45 +18,56 @@ import (
 	"strings"
 )
 
-type addressMode int
+//-----------------------------------------------------------------------------
+// address modes
+
+type adrMode int
 
 const (
-	amNone addressMode = iota
-	amAcc              // accumulator
-	amAbs              // absolute
-	amAbsX             // absolute, X-indexed
-	amAbsY             // absolute, Y-indexed
-	amImm              // immediate
-	amImpl             // implied
-	amInd              // indirect
-	amXInd             // X-indexed, indirect
-	amIndY             // indirect, Y-indexed
-	amRel              // relative
-	amZpg              // zeropage
-	amZpgX             // zeropage, X-indexed
-	amZpgY             // zeropage, Y-indexed
+	amNone adrMode = iota
+	amAcc          // accumulator
+	amAbs          // absolute
+	amAbsX         // absolute, X-indexed
+	amAbsY         // absolute, Y-indexed
+	amImm          // immediate
+	amImpl         // implied
+	amInd          // indirect
+	amXInd         // X-indexed, indirect
+	amIndY         // indirect, Y-indexed
+	amRel          // relative
+	amZpg          // zeropage
+	amZpgX         // zeropage, X-indexed
+	amZpgY         // zeropage, Y-indexed
 )
 
-var modeDescr = map[addressMode]string{
-	amNone: "",
-	amAcc:  "acc",
-	amAbs:  "abs",
-	amAbsX: "absx",
-	amAbsY: "absy",
-	amImm:  "imm",
-	amImpl: "impl",
-	amInd:  "ind",
-	amXInd: "xind",
-	amIndY: "indy",
-	amRel:  "rel",
-	amZpg:  "z",
-	amZpgX: "zx",
-	amZpgY: "zy",
+type adrModeInfo struct {
+	suffix string // function suffix
+	descr  string // mode description
 }
 
+var modeDescr = map[adrMode]adrModeInfo{
+	amNone: {"", ""},
+	amAcc:  {"acc", "accumulator"},
+	amAbs:  {"abs", "absolute"},
+	amAbsX: {"absx", "absolute, X-indexed"},
+	amAbsY: {"absy", "absolute, Y-indexed"},
+	amImm:  {"imm", "immediate"},
+	amImpl: {"impl", "implied"},
+	amInd:  {"ind", "indirect"},
+	amXInd: {"xind", "X-indexed, indirect"},
+	amIndY: {"indy", "indirect, Y-indexed"},
+	amRel:  {"rel", "relative"},
+	amZpg:  {"z", "zeropage"},
+	amZpgX: {"zx", "zeropage, X-indexed"},
+	amZpgY: {"zy", "zeropage, Y-indexed"},
+}
+
+//-----------------------------------------------------------------------------
+// opcodes
+
 type opInfo struct {
-	ins  string
-	mode addressMode
+	ins  string  // instruction mneumonic
+	mode adrMode // address mode
 }
 
 var opcodes = map[uint8]opInfo{
@@ -316,7 +327,7 @@ func opcodeFuncName(code uint8) string {
 	fname := "opILL"
 	x, ok := opcodes[code]
 	if ok {
-		fname = fmt.Sprintf("op%s%s", x.ins, modeDescr[x.mode])
+		fname = fmt.Sprintf("op%s%s", x.ins, modeDescr[x.mode].suffix)
 	}
 	return fname
 }
