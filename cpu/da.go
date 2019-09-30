@@ -13,11 +13,16 @@ https://www.masswerk.at/6502/6502_instruction_set.html
 
 package cpu
 
+import (
+	"fmt"
+	"strings"
+)
+
 type addressMode int
 
 const (
 	amNone addressMode = iota
-	amA                // accumulator
+	amAcc              // accumulator
 	amAbs              // absolute
 	amAbsX             // absolute, X-indexed
 	amAbsY             // absolute, Y-indexed
@@ -32,9 +37,26 @@ const (
 	amZpgY             // zeropage, Y-indexed
 )
 
+var modeDescr = map[addressMode]string{
+	amNone: "",
+	amAcc:  "acc",
+	amAbs:  "abs",
+	amAbsX: "absx",
+	amAbsY: "absy",
+	amImm:  "imm",
+	amImpl: "impl",
+	amInd:  "ind",
+	amXInd: "xind",
+	amIndY: "indy",
+	amRel:  "rel",
+	amZpg:  "z",
+	amZpgX: "zx",
+	amZpgY: "zy",
+}
+
 type opInfo struct {
-	mneumonic string
-	mode      addressMode
+	ins  string
+	mode addressMode
 }
 
 var opcodes = map[uint8]opInfo{
@@ -109,31 +131,202 @@ var opcodes = map[uint8]opInfo{
 	0xe5: opInfo{"SBC", amZpg},
 	0xf5: opInfo{"SBC", amZpgX},
 
+	0x06: opInfo{"ASL", amZpg},
+	0x16: opInfo{"ASL", amZpgX},
+	0x26: opInfo{"ROL", amZpg},
+	0x36: opInfo{"ROL", amZpgX},
+	0x46: opInfo{"LSR", amZpg},
+	0x56: opInfo{"LSR", amZpgX},
+	0x66: opInfo{"ROR", amZpg},
+	0x76: opInfo{"ROR", amZpgX},
+	0x86: opInfo{"STX", amZpg},
+	0x96: opInfo{"STX", amZpgY},
+	0xa6: opInfo{"LDX", amZpg},
+	0xb6: opInfo{"LDX", amZpgY},
+	0xc6: opInfo{"DEC", amZpg},
+	0xd6: opInfo{"DEC", amZpgX},
+	0xe6: opInfo{"INC", amZpg},
+	0xf6: opInfo{"INC", amZpgX},
 
+	0x08: opInfo{"PHP", amImpl},
+	0x18: opInfo{"CLC", amImpl},
+	0x28: opInfo{"PLP", amImpl},
+	0x38: opInfo{"SEC", amImpl},
+	0x48: opInfo{"PHA", amImpl},
+	0x58: opInfo{"CLI", amImpl},
+	0x68: opInfo{"PLA", amImpl},
+	0x78: opInfo{"SEI", amImpl},
+	0x88: opInfo{"DEY", amImpl},
+	0x98: opInfo{"TYA", amImpl},
+	0xa8: opInfo{"TAY", amImpl},
+	0xb8: opInfo{"CLV", amImpl},
+	0xc8: opInfo{"INY", amImpl},
+	0xd8: opInfo{"CLD", amImpl},
+	0xe8: opInfo{"INX", amImpl},
+	0xf8: opInfo{"SED", amImpl},
+
+	0x09: opInfo{"ORA", amImm},
+	0x19: opInfo{"ORA", amAbsY},
+	0x29: opInfo{"AND", amImm},
+	0x39: opInfo{"AND", amAbsY},
+	0x49: opInfo{"EOR", amImm},
+	0x59: opInfo{"EOR", amAbsY},
+	0x69: opInfo{"ADC", amImm},
+	0x79: opInfo{"ADC", amAbsY},
+	0x89: opInfo{"ILL", amNone},
+	0x99: opInfo{"STA", amAbsY},
+	0xa9: opInfo{"LDA", amImm},
+	0xb9: opInfo{"LDA", amAbsY},
+	0xc9: opInfo{"CMP", amImm},
+	0xd9: opInfo{"CMP", amAbsY},
+	0xe9: opInfo{"SBC", amImm},
+	0xf9: opInfo{"SBC", amAbsY},
+
+	0x0a: opInfo{"ASL", amAcc},
+	0x1a: opInfo{"ILL", amNone},
+	0x2a: opInfo{"ROL", amAcc},
+	0x3a: opInfo{"ILL", amNone},
+	0x4a: opInfo{"LSR", amAcc},
+	0x5a: opInfo{"ILL", amNone},
+	0x6a: opInfo{"ROR", amAcc},
+	0x7a: opInfo{"ILL", amNone},
+	0x8a: opInfo{"TXA", amImpl},
+	0x9a: opInfo{"TXS", amImpl},
+	0xaa: opInfo{"TAX", amImpl},
+	0xba: opInfo{"TSX", amImpl},
+	0xca: opInfo{"DEX", amImpl},
+	0xda: opInfo{"ILL", amNone},
+	0xea: opInfo{"NOP", amImpl},
+	0xfa: opInfo{"ILL", amNone},
+
+	0x0c: opInfo{"ILL", amNone},
+	0x1c: opInfo{"ILL", amNone},
+	0x2c: opInfo{"BIT", amAbs},
+	0x3c: opInfo{"ILL", amNone},
+	0x4c: opInfo{"JMP", amAbs},
+	0x5c: opInfo{"ILL", amNone},
+	0x6c: opInfo{"JMP", amInd},
+	0x7c: opInfo{"ILL", amNone},
+	0x8c: opInfo{"STY", amAbs},
+	0x9c: opInfo{"ILL", amNone},
+	0xac: opInfo{"LDY", amAbs},
+	0xbc: opInfo{"LDY", amAbsX},
+	0xcc: opInfo{"CPY", amAbs},
+	0xdc: opInfo{"ILL", amNone},
+	0xec: opInfo{"CPX", amAbs},
+	0xfc: opInfo{"ILL", amNone},
+
+	0x0d: opInfo{"ORA", amAbs},
+	0x1d: opInfo{"ORA", amAbsX},
+	0x2d: opInfo{"AND", amAbs},
+	0x3d: opInfo{"AND", amAbsX},
+	0x4d: opInfo{"EOR", amAbs},
+	0x5d: opInfo{"EOR", amAbsX},
+	0x6d: opInfo{"ADC", amAbs},
+	0x7d: opInfo{"ADC", amAbsX},
+	0x8d: opInfo{"STA", amAbs},
+	0x9d: opInfo{"STA", amAbsX},
+	0xad: opInfo{"LDA", amAbs},
+	0xbd: opInfo{"LDA", amAbsX},
+	0xcd: opInfo{"CMP", amAbs},
+	0xdd: opInfo{"CMP", amAbsX},
+	0xed: opInfo{"SBC", amAbs},
+	0xfd: opInfo{"SBC", amAbsX},
+
+	0x0e: opInfo{"ASL", amAbs},
+	0x1e: opInfo{"ASL", amAbsX},
+	0x2e: opInfo{"ROL", amAbs},
+	0x3e: opInfo{"ROL", amAbsX},
+	0x4e: opInfo{"LSR", amAbs},
+	0x5e: opInfo{"LSR", amAbsX},
+	0x6e: opInfo{"ROR", amAbs},
+	0x7e: opInfo{"ROR", amAbsX},
+	0x8e: opInfo{"STX", amAbs},
+	0x9e: opInfo{"ILL", amNone},
+	0xae: opInfo{"LDX", amAbs},
+	0xbe: opInfo{"LDX", amAbsY},
+	0xce: opInfo{"DEC", amAbs},
+	0xde: opInfo{"DEC", amAbsX},
+	0xee: opInfo{"INC", amAbs},
+	0xfe: opInfo{"INC", amAbsX},
 }
 
-/*
+var insDescr = map[string]string{
+	"ADC": "add with carry",
+	"AND": "and (with accumulator)",
+	"ASL": "arithmetic shift left",
+	"BCC": "branch on carry clear",
+	"BCS": "branch on carry set",
+	"BEQ": "branch on equal (zero set)",
+	"BIT": "bit test",
+	"BMI": "branch on minus (negative set)",
+	"BNE": "branch on not equal (zero clear)",
+	"BPL": "branch on plus (negative clear)",
+	"BRK": "break / interrupt",
+	"BVC": "branch on overflow clear",
+	"BVS": "branch on overflow set",
+	"CLC": "clear carry",
+	"CLD": "clear decimal",
+	"CLI": "clear interrupt disable",
+	"CLV": "clear overflow",
+	"CMP": "compare (with accumulator)",
+	"CPX": "compare with X",
+	"CPY": "compare with Y",
+	"DEC": "decrement",
+	"DEX": "decrement X",
+	"DEY": "decrement Y",
+	"EOR": "exclusive or (with accumulator)",
+	"INC": "increment",
+	"INX": "increment X",
+	"INY": "increment Y",
+	"JMP": "jump",
+	"JSR": "jump subroutine",
+	"LDA": "load accumulator",
+	"LDX": "load X",
+	"LDY": "load Y",
+	"LSR": "logical shift right",
+	"NOP": "no operation",
+	"ORA": "or with accumulator",
+	"PHA": "push accumulator",
+	"PHP": "push processor status (SR)",
+	"PLA": "pull accumulator",
+	"PLP": "pull processor status (SR)",
+	"ROL": "rotate left",
+	"ROR": "rotate right",
+	"RTI": "return from interrupt",
+	"RTS": "return from subroutine",
+	"SBC": "subtract with carry",
+	"SEC": "set carry",
+	"SED": "set decimal",
+	"SEI": "set interrupt disable",
+	"STA": "store accumulator",
+	"STX": "store X",
+	"STY": "store Y",
+	"TAX": "transfer accumulator to X",
+	"TAY": "transfer accumulator to Y",
+	"TSX": "transfer stack pointer to X",
+	"TXA": "transfer X to accumulator",
+	"TXS": "transfer X to stack pointer",
+	"TYA": "transfer Y to accumulator",
+}
 
+//-----------------------------------------------------------------------------
 
-HI	LO-NIBBLE
-06	07	08	09	0A	0B	0C	0D	0E	0F
-ASL zpg	  ---	PHP impl	ORA #	ASL A	---	---	ORA abs	ASL abs	---
-ASL zpg,X	---	CLC impl	ORA abs,Y	---	---	---	ORA abs,X	ASL abs,X	---
-ROL zpg	  ---	PLP impl	AND #	ROL A	---	BIT abs	AND abs	ROL abs	---
-ROL zpg,X	---	SEC impl	AND abs,Y	---	---	---	AND abs,X	ROL abs,X	---
-LSR zpg	  ---	PHA impl	EOR #	LSR A	---	JMP abs	EOR abs	LSR abs	---
-LSR zpg,X	---	CLI impl	EOR abs,Y	---	---	---	EOR abs,X	LSR abs,X	---
-ROR zpg	  ---	PLA impl	ADC #	ROR A	---	JMP ind	ADC abs	ROR abs	---
-ROR zpg,X	---	SEI impl	ADC abs,Y	---	---	---	ADC abs,X	ROR abs,X	---
-STX zpg	  ---	DEY impl	---	TXA impl	---	STY abs	STA abs	STX abs	---
-STX zpg,Y	---	TYA impl	STA abs,Y	TXS impl	---	---	STA abs,X	---	---
-LDX zpg	  ---	TAY impl	LDA #	TAX impl	---	LDY abs	LDA abs	LDX abs	---
-LDX zpg,Y	---	CLV impl	LDA abs,Y	TSX impl	---	LDY abs,X	LDA abs,X	LDX abs,Y	---
-DEC zpg	  ---	INY impl	CMP #	DEX impl	---	CPY abs	CMP abs	DEC abs	---
-DEC zpg,X	---	CLD impl	CMP abs,Y	---	---	---	CMP abs,X	DEC abs,X	---
-INC zpg	  ---	INX impl	SBC #	NOP impl	---	CPX abs	SBC abs	INC abs	---
-INC zpg,X	---	SED impl	SBC abs,Y	---	---	---	SBC abs,X	INC abs,X	---
+func opcodeFuncName(code uint8) string {
+	fname := "opILL"
+	x, ok := opcodes[code]
+	if ok {
+		fname = fmt.Sprintf("op%s%s", x.ins, modeDescr[x.mode])
+	}
+	return fname
+}
 
-*/
+func genOpcodeFuncs() string {
+	s := make([]string, 256)
+	for i := 0; i < 256; i++ {
+		s = append(s, opcodeFuncName(uint8(i)))
+	}
+	return strings.Join(s, "\n")
+}
 
 //-----------------------------------------------------------------------------
