@@ -15,6 +15,7 @@ package cpu
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -65,203 +66,214 @@ var modeDescr = map[adrMode]adrModeInfo{
 //-----------------------------------------------------------------------------
 // opcodes
 
-type opInfo struct {
-	ins  string  // instruction mneumonic
+// instruction information
+type insInfo struct {
+	ins  string  // mneumonic
 	mode adrMode // address mode
 }
 
-var opcodes = map[uint8]opInfo{
+// opcode table as a map, unspecified opcodes are illegal instructions
+var opcodeTable = map[uint8]insInfo{
 
-	0x00: opInfo{"BRK", amImpl},
-	0x10: opInfo{"BPL", amRel},
-	0x20: opInfo{"JSR", amAbs},
-	0x30: opInfo{"BMI", amRel},
-	0x40: opInfo{"RTI", amImpl},
-	0x50: opInfo{"BVC", amRel},
-	0x60: opInfo{"RTS", amImpl},
-	0x70: opInfo{"BVS", amRel},
-	0x80: opInfo{"ILL", amNone},
-	0x90: opInfo{"BCC", amRel},
-	0xa0: opInfo{"LDY", amImm},
-	0xb0: opInfo{"BCS", amRel},
-	0xc0: opInfo{"CPY", amImm},
-	0xd0: opInfo{"BNE", amRel},
-	0xe0: opInfo{"CPX", amImm},
-	0xf0: opInfo{"BEQ", amImm},
+	0x00: insInfo{"BRK", amImpl},
+	0x10: insInfo{"BPL", amRel},
+	0x20: insInfo{"JSR", amAbs},
+	0x30: insInfo{"BMI", amRel},
+	0x40: insInfo{"RTI", amImpl},
+	0x50: insInfo{"BVC", amRel},
+	0x60: insInfo{"RTS", amImpl},
+	0x70: insInfo{"BVS", amRel},
+	0x80: insInfo{"ILL", amNone},
+	0x90: insInfo{"BCC", amRel},
+	0xa0: insInfo{"LDY", amImm},
+	0xb0: insInfo{"BCS", amRel},
+	0xc0: insInfo{"CPY", amImm},
+	0xd0: insInfo{"BNE", amRel},
+	0xe0: insInfo{"CPX", amImm},
+	0xf0: insInfo{"BEQ", amImm},
 
-	0x01: opInfo{"ORA", amXInd},
-	0x11: opInfo{"ORA", amIndY},
-	0x21: opInfo{"AND", amXInd},
-	0x31: opInfo{"AND", amIndY},
-	0x41: opInfo{"EOR", amXInd},
-	0x51: opInfo{"EOR", amIndY},
-	0x61: opInfo{"ADC", amXInd},
-	0x71: opInfo{"ADC", amIndY},
-	0x81: opInfo{"STA", amXInd},
-	0x91: opInfo{"STA", amIndY},
-	0xa1: opInfo{"LDA", amXInd},
-	0xb1: opInfo{"LDA", amIndY},
-	0xc1: opInfo{"CMP", amXInd},
-	0xd1: opInfo{"CMP", amIndY},
-	0xe1: opInfo{"SBC", amXInd},
-	0xf1: opInfo{"SBC", amIndY},
+	0x01: insInfo{"ORA", amXInd},
+	0x11: insInfo{"ORA", amIndY},
+	0x21: insInfo{"AND", amXInd},
+	0x31: insInfo{"AND", amIndY},
+	0x41: insInfo{"EOR", amXInd},
+	0x51: insInfo{"EOR", amIndY},
+	0x61: insInfo{"ADC", amXInd},
+	0x71: insInfo{"ADC", amIndY},
+	0x81: insInfo{"STA", amXInd},
+	0x91: insInfo{"STA", amIndY},
+	0xa1: insInfo{"LDA", amXInd},
+	0xb1: insInfo{"LDA", amIndY},
+	0xc1: insInfo{"CMP", amXInd},
+	0xd1: insInfo{"CMP", amIndY},
+	0xe1: insInfo{"SBC", amXInd},
+	0xf1: insInfo{"SBC", amIndY},
 
-	0xa2: opInfo{"LDX", amImm},
+	0xa2: insInfo{"LDX", amImm},
 
-	0x04: opInfo{"ILL", amNone},
-	0x14: opInfo{"ILL", amNone},
-	0x24: opInfo{"BIT", amZpg},
-	0x34: opInfo{"ILL", amNone},
-	0x44: opInfo{"ILL", amNone},
-	0x54: opInfo{"ILL", amNone},
-	0x64: opInfo{"ILL", amNone},
-	0x74: opInfo{"ILL", amNone},
-	0x84: opInfo{"STY", amZpg},
-	0x94: opInfo{"STY", amZpgX},
-	0xa4: opInfo{"LDY", amZpg},
-	0xb4: opInfo{"LDY", amZpgX},
-	0xc4: opInfo{"CPY", amZpg},
-	0xd4: opInfo{"ILL", amNone},
-	0xe4: opInfo{"CPX", amZpg},
-	0xf4: opInfo{"ILL", amNone},
+	0x04: insInfo{"ILL", amNone},
+	0x14: insInfo{"ILL", amNone},
+	0x24: insInfo{"BIT", amZpg},
+	0x34: insInfo{"ILL", amNone},
+	0x44: insInfo{"ILL", amNone},
+	0x54: insInfo{"ILL", amNone},
+	0x64: insInfo{"ILL", amNone},
+	0x74: insInfo{"ILL", amNone},
+	0x84: insInfo{"STY", amZpg},
+	0x94: insInfo{"STY", amZpgX},
+	0xa4: insInfo{"LDY", amZpg},
+	0xb4: insInfo{"LDY", amZpgX},
+	0xc4: insInfo{"CPY", amZpg},
+	0xd4: insInfo{"ILL", amNone},
+	0xe4: insInfo{"CPX", amZpg},
+	0xf4: insInfo{"ILL", amNone},
 
-	0x05: opInfo{"ORA", amZpg},
-	0x15: opInfo{"ORA", amZpgX},
-	0x25: opInfo{"AND", amZpg},
-	0x35: opInfo{"AND", amZpgX},
-	0x45: opInfo{"EOR", amZpg},
-	0x55: opInfo{"EOR", amZpgX},
-	0x65: opInfo{"ADC", amZpg},
-	0x75: opInfo{"ADC", amZpgX},
-	0x85: opInfo{"STA", amZpg},
-	0x95: opInfo{"STA", amZpgX},
-	0xa5: opInfo{"LDA", amZpg},
-	0xb5: opInfo{"LDA", amZpgX},
-	0xc5: opInfo{"CMP", amZpg},
-	0xd5: opInfo{"CMP", amZpgX},
-	0xe5: opInfo{"SBC", amZpg},
-	0xf5: opInfo{"SBC", amZpgX},
+	0x05: insInfo{"ORA", amZpg},
+	0x15: insInfo{"ORA", amZpgX},
+	0x25: insInfo{"AND", amZpg},
+	0x35: insInfo{"AND", amZpgX},
+	0x45: insInfo{"EOR", amZpg},
+	0x55: insInfo{"EOR", amZpgX},
+	0x65: insInfo{"ADC", amZpg},
+	0x75: insInfo{"ADC", amZpgX},
+	0x85: insInfo{"STA", amZpg},
+	0x95: insInfo{"STA", amZpgX},
+	0xa5: insInfo{"LDA", amZpg},
+	0xb5: insInfo{"LDA", amZpgX},
+	0xc5: insInfo{"CMP", amZpg},
+	0xd5: insInfo{"CMP", amZpgX},
+	0xe5: insInfo{"SBC", amZpg},
+	0xf5: insInfo{"SBC", amZpgX},
 
-	0x06: opInfo{"ASL", amZpg},
-	0x16: opInfo{"ASL", amZpgX},
-	0x26: opInfo{"ROL", amZpg},
-	0x36: opInfo{"ROL", amZpgX},
-	0x46: opInfo{"LSR", amZpg},
-	0x56: opInfo{"LSR", amZpgX},
-	0x66: opInfo{"ROR", amZpg},
-	0x76: opInfo{"ROR", amZpgX},
-	0x86: opInfo{"STX", amZpg},
-	0x96: opInfo{"STX", amZpgY},
-	0xa6: opInfo{"LDX", amZpg},
-	0xb6: opInfo{"LDX", amZpgY},
-	0xc6: opInfo{"DEC", amZpg},
-	0xd6: opInfo{"DEC", amZpgX},
-	0xe6: opInfo{"INC", amZpg},
-	0xf6: opInfo{"INC", amZpgX},
+	0x06: insInfo{"ASL", amZpg},
+	0x16: insInfo{"ASL", amZpgX},
+	0x26: insInfo{"ROL", amZpg},
+	0x36: insInfo{"ROL", amZpgX},
+	0x46: insInfo{"LSR", amZpg},
+	0x56: insInfo{"LSR", amZpgX},
+	0x66: insInfo{"ROR", amZpg},
+	0x76: insInfo{"ROR", amZpgX},
+	0x86: insInfo{"STX", amZpg},
+	0x96: insInfo{"STX", amZpgY},
+	0xa6: insInfo{"LDX", amZpg},
+	0xb6: insInfo{"LDX", amZpgY},
+	0xc6: insInfo{"DEC", amZpg},
+	0xd6: insInfo{"DEC", amZpgX},
+	0xe6: insInfo{"INC", amZpg},
+	0xf6: insInfo{"INC", amZpgX},
 
-	0x08: opInfo{"PHP", amImpl},
-	0x18: opInfo{"CLC", amImpl},
-	0x28: opInfo{"PLP", amImpl},
-	0x38: opInfo{"SEC", amImpl},
-	0x48: opInfo{"PHA", amImpl},
-	0x58: opInfo{"CLI", amImpl},
-	0x68: opInfo{"PLA", amImpl},
-	0x78: opInfo{"SEI", amImpl},
-	0x88: opInfo{"DEY", amImpl},
-	0x98: opInfo{"TYA", amImpl},
-	0xa8: opInfo{"TAY", amImpl},
-	0xb8: opInfo{"CLV", amImpl},
-	0xc8: opInfo{"INY", amImpl},
-	0xd8: opInfo{"CLD", amImpl},
-	0xe8: opInfo{"INX", amImpl},
-	0xf8: opInfo{"SED", amImpl},
+	0x08: insInfo{"PHP", amImpl},
+	0x18: insInfo{"CLC", amImpl},
+	0x28: insInfo{"PLP", amImpl},
+	0x38: insInfo{"SEC", amImpl},
+	0x48: insInfo{"PHA", amImpl},
+	0x58: insInfo{"CLI", amImpl},
+	0x68: insInfo{"PLA", amImpl},
+	0x78: insInfo{"SEI", amImpl},
+	0x88: insInfo{"DEY", amImpl},
+	0x98: insInfo{"TYA", amImpl},
+	0xa8: insInfo{"TAY", amImpl},
+	0xb8: insInfo{"CLV", amImpl},
+	0xc8: insInfo{"INY", amImpl},
+	0xd8: insInfo{"CLD", amImpl},
+	0xe8: insInfo{"INX", amImpl},
+	0xf8: insInfo{"SED", amImpl},
 
-	0x09: opInfo{"ORA", amImm},
-	0x19: opInfo{"ORA", amAbsY},
-	0x29: opInfo{"AND", amImm},
-	0x39: opInfo{"AND", amAbsY},
-	0x49: opInfo{"EOR", amImm},
-	0x59: opInfo{"EOR", amAbsY},
-	0x69: opInfo{"ADC", amImm},
-	0x79: opInfo{"ADC", amAbsY},
-	0x89: opInfo{"ILL", amNone},
-	0x99: opInfo{"STA", amAbsY},
-	0xa9: opInfo{"LDA", amImm},
-	0xb9: opInfo{"LDA", amAbsY},
-	0xc9: opInfo{"CMP", amImm},
-	0xd9: opInfo{"CMP", amAbsY},
-	0xe9: opInfo{"SBC", amImm},
-	0xf9: opInfo{"SBC", amAbsY},
+	0x09: insInfo{"ORA", amImm},
+	0x19: insInfo{"ORA", amAbsY},
+	0x29: insInfo{"AND", amImm},
+	0x39: insInfo{"AND", amAbsY},
+	0x49: insInfo{"EOR", amImm},
+	0x59: insInfo{"EOR", amAbsY},
+	0x69: insInfo{"ADC", amImm},
+	0x79: insInfo{"ADC", amAbsY},
+	0x89: insInfo{"ILL", amNone},
+	0x99: insInfo{"STA", amAbsY},
+	0xa9: insInfo{"LDA", amImm},
+	0xb9: insInfo{"LDA", amAbsY},
+	0xc9: insInfo{"CMP", amImm},
+	0xd9: insInfo{"CMP", amAbsY},
+	0xe9: insInfo{"SBC", amImm},
+	0xf9: insInfo{"SBC", amAbsY},
 
-	0x0a: opInfo{"ASL", amAcc},
-	0x1a: opInfo{"ILL", amNone},
-	0x2a: opInfo{"ROL", amAcc},
-	0x3a: opInfo{"ILL", amNone},
-	0x4a: opInfo{"LSR", amAcc},
-	0x5a: opInfo{"ILL", amNone},
-	0x6a: opInfo{"ROR", amAcc},
-	0x7a: opInfo{"ILL", amNone},
-	0x8a: opInfo{"TXA", amImpl},
-	0x9a: opInfo{"TXS", amImpl},
-	0xaa: opInfo{"TAX", amImpl},
-	0xba: opInfo{"TSX", amImpl},
-	0xca: opInfo{"DEX", amImpl},
-	0xda: opInfo{"ILL", amNone},
-	0xea: opInfo{"NOP", amImpl},
-	0xfa: opInfo{"ILL", amNone},
+	0x0a: insInfo{"ASL", amAcc},
+	0x1a: insInfo{"ILL", amNone},
+	0x2a: insInfo{"ROL", amAcc},
+	0x3a: insInfo{"ILL", amNone},
+	0x4a: insInfo{"LSR", amAcc},
+	0x5a: insInfo{"ILL", amNone},
+	0x6a: insInfo{"ROR", amAcc},
+	0x7a: insInfo{"ILL", amNone},
+	0x8a: insInfo{"TXA", amImpl},
+	0x9a: insInfo{"TXS", amImpl},
+	0xaa: insInfo{"TAX", amImpl},
+	0xba: insInfo{"TSX", amImpl},
+	0xca: insInfo{"DEX", amImpl},
+	0xda: insInfo{"ILL", amNone},
+	0xea: insInfo{"NOP", amImpl},
+	0xfa: insInfo{"ILL", amNone},
 
-	0x0c: opInfo{"ILL", amNone},
-	0x1c: opInfo{"ILL", amNone},
-	0x2c: opInfo{"BIT", amAbs},
-	0x3c: opInfo{"ILL", amNone},
-	0x4c: opInfo{"JMP", amAbs},
-	0x5c: opInfo{"ILL", amNone},
-	0x6c: opInfo{"JMP", amInd},
-	0x7c: opInfo{"ILL", amNone},
-	0x8c: opInfo{"STY", amAbs},
-	0x9c: opInfo{"ILL", amNone},
-	0xac: opInfo{"LDY", amAbs},
-	0xbc: opInfo{"LDY", amAbsX},
-	0xcc: opInfo{"CPY", amAbs},
-	0xdc: opInfo{"ILL", amNone},
-	0xec: opInfo{"CPX", amAbs},
-	0xfc: opInfo{"ILL", amNone},
+	0x0c: insInfo{"ILL", amNone},
+	0x1c: insInfo{"ILL", amNone},
+	0x2c: insInfo{"BIT", amAbs},
+	0x3c: insInfo{"ILL", amNone},
+	0x4c: insInfo{"JMP", amAbs},
+	0x5c: insInfo{"ILL", amNone},
+	0x6c: insInfo{"JMP", amInd},
+	0x7c: insInfo{"ILL", amNone},
+	0x8c: insInfo{"STY", amAbs},
+	0x9c: insInfo{"ILL", amNone},
+	0xac: insInfo{"LDY", amAbs},
+	0xbc: insInfo{"LDY", amAbsX},
+	0xcc: insInfo{"CPY", amAbs},
+	0xdc: insInfo{"ILL", amNone},
+	0xec: insInfo{"CPX", amAbs},
+	0xfc: insInfo{"ILL", amNone},
 
-	0x0d: opInfo{"ORA", amAbs},
-	0x1d: opInfo{"ORA", amAbsX},
-	0x2d: opInfo{"AND", amAbs},
-	0x3d: opInfo{"AND", amAbsX},
-	0x4d: opInfo{"EOR", amAbs},
-	0x5d: opInfo{"EOR", amAbsX},
-	0x6d: opInfo{"ADC", amAbs},
-	0x7d: opInfo{"ADC", amAbsX},
-	0x8d: opInfo{"STA", amAbs},
-	0x9d: opInfo{"STA", amAbsX},
-	0xad: opInfo{"LDA", amAbs},
-	0xbd: opInfo{"LDA", amAbsX},
-	0xcd: opInfo{"CMP", amAbs},
-	0xdd: opInfo{"CMP", amAbsX},
-	0xed: opInfo{"SBC", amAbs},
-	0xfd: opInfo{"SBC", amAbsX},
+	0x0d: insInfo{"ORA", amAbs},
+	0x1d: insInfo{"ORA", amAbsX},
+	0x2d: insInfo{"AND", amAbs},
+	0x3d: insInfo{"AND", amAbsX},
+	0x4d: insInfo{"EOR", amAbs},
+	0x5d: insInfo{"EOR", amAbsX},
+	0x6d: insInfo{"ADC", amAbs},
+	0x7d: insInfo{"ADC", amAbsX},
+	0x8d: insInfo{"STA", amAbs},
+	0x9d: insInfo{"STA", amAbsX},
+	0xad: insInfo{"LDA", amAbs},
+	0xbd: insInfo{"LDA", amAbsX},
+	0xcd: insInfo{"CMP", amAbs},
+	0xdd: insInfo{"CMP", amAbsX},
+	0xed: insInfo{"SBC", amAbs},
+	0xfd: insInfo{"SBC", amAbsX},
 
-	0x0e: opInfo{"ASL", amAbs},
-	0x1e: opInfo{"ASL", amAbsX},
-	0x2e: opInfo{"ROL", amAbs},
-	0x3e: opInfo{"ROL", amAbsX},
-	0x4e: opInfo{"LSR", amAbs},
-	0x5e: opInfo{"LSR", amAbsX},
-	0x6e: opInfo{"ROR", amAbs},
-	0x7e: opInfo{"ROR", amAbsX},
-	0x8e: opInfo{"STX", amAbs},
-	0x9e: opInfo{"ILL", amNone},
-	0xae: opInfo{"LDX", amAbs},
-	0xbe: opInfo{"LDX", amAbsY},
-	0xce: opInfo{"DEC", amAbs},
-	0xde: opInfo{"DEC", amAbsX},
-	0xee: opInfo{"INC", amAbs},
-	0xfe: opInfo{"INC", amAbsX},
+	0x0e: insInfo{"ASL", amAbs},
+	0x1e: insInfo{"ASL", amAbsX},
+	0x2e: insInfo{"ROL", amAbs},
+	0x3e: insInfo{"ROL", amAbsX},
+	0x4e: insInfo{"LSR", amAbs},
+	0x5e: insInfo{"LSR", amAbsX},
+	0x6e: insInfo{"ROR", amAbs},
+	0x7e: insInfo{"ROR", amAbsX},
+	0x8e: insInfo{"STX", amAbs},
+	0x9e: insInfo{"ILL", amNone},
+	0xae: insInfo{"LDX", amAbs},
+	0xbe: insInfo{"LDX", amAbsY},
+	0xce: insInfo{"DEC", amAbs},
+	0xde: insInfo{"DEC", amAbsX},
+	0xee: insInfo{"INC", amAbs},
+	0xfe: insInfo{"INC", amAbsX},
 }
 
+// opcodeLookup returns the instruction information for this opcode.
+func opcodeLookup(code uint8) *insInfo {
+	if info, ok := opcodeTable[code]; ok {
+		return &info
+	}
+	return &insInfo{"ILL", amNone}
+}
+
+// insDescr maps the instruction mneumonic onto a full description.
 var insDescr = map[string]string{
 	"ADC": "add with carry",
 	"AND": "and (with accumulator)",
@@ -324,20 +336,114 @@ var insDescr = map[string]string{
 //-----------------------------------------------------------------------------
 
 func opcodeFuncName(code uint8) string {
-	fname := "opILL"
-	x, ok := opcodes[code]
-	if ok {
-		fname = fmt.Sprintf("op%s%s", x.ins, modeDescr[x.mode].suffix)
-	}
-	return fname
+	x := opcodeLookup(code)
+	return fmt.Sprintf("op%s%s", x.ins, modeDescr[x.mode].suffix)
 }
 
-func genOpcodeFuncs() string {
-	s := make([]string, 256)
-	for i := 0; i < 256; i++ {
-		s = append(s, opcodeFuncName(uint8(i)))
+func genOpcodeFunc() string {
+
+	// get the set of unique opcode function names
+	fs := make(map[string]bool)
+	for code := 0; code < 256; code++ {
+		fs[opcodeFuncName(uint8(code))] = true
 	}
+	f := make([]string, len(fs))
+	i := 0
+	for name := range fs {
+		f[i] = name
+		i++
+	}
+	sort.Strings(f)
+	return strings.Join(f, "\n")
+}
+
+func genOpcodeTable() string {
+
+	f := make([]string, 16)
+	for i := 0; i < 16; i++ {
+		l := make([]string, 16)
+		for j := 0; j < 16; j++ {
+			code := uint8((i * 16) + j)
+			l[j] = opcodeFuncName(code)
+		}
+		f[i] = strings.Join(l, ",")
+	}
+
+	s := make([]string, 3)
+	s[0] = "var opcodeTable = [256]opFunc{"
+	s[1] = strings.Join(f, "\n")
+	s[2] = "}"
 	return strings.Join(s, "\n")
+}
+
+func GenCode() string {
+
+	s := make([]string, 2)
+
+	s[0] = genOpcodeFunc()
+	s[1] = genOpcodeTable()
+
+	return strings.Join(s, "\n")
+
+}
+
+//-----------------------------------------------------------------------------
+
+func Disassemble(mem []byte) (string, uint) {
+
+	var ofs uint
+	var s []string
+
+	opcode := mem[ofs]
+	ofs++
+	info := opcodeLookup(opcode)
+
+	// instruction mneumonic
+	s = append(s, info.ins)
+
+	switch info.mode {
+	case amNone:
+		// illegal - no operands
+	case amAcc:
+		s = append(s, "accumulator")
+	case amAbs:
+		s = append(s, "absolute")
+	case amAbsX:
+		s = append(s, "absolute, X-indexed")
+	case amAbsY:
+		s = append(s, "absolute, Y-indexed")
+	case amImm:
+		// immediate - 1 byte operand
+		operand := mem[ofs]
+		ofs++
+		s = append(s, fmt.Sprintf("$%02x", operand))
+	case amImpl:
+		// implied - no operands
+	case amInd:
+		s = append(s, "indirect")
+	case amXInd:
+		s = append(s, "X-indexed, indirect")
+	case amIndY:
+		// indirect, Y-indexed - 1 byte operand
+		operand := mem[ofs]
+		ofs++
+		s = append(s, fmt.Sprintf("($%02x),Y", operand))
+	case amRel:
+		// relative - 1 byte operand
+		operand := mem[ofs]
+		ofs++
+		s = append(s, fmt.Sprintf("$%02x", operand))
+	case amZpg:
+		s = append(s, "zeropage")
+	case amZpgX:
+		s = append(s, "zeropage, X-indexed")
+	case amZpgY:
+		s = append(s, "zeropage, Y-indexed")
+	default:
+		panic("bad address mode")
+	}
+
+	return strings.Join(s, " "), ofs
 }
 
 //-----------------------------------------------------------------------------

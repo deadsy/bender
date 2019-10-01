@@ -300,7 +300,7 @@ func opILL(m *M6502) uint {
 
 type opFunc func(m *M6502) uint
 
-var opcodeTable = [256]opFunc{
+var opcodeFunc = [256]opFunc{
 	// 00  01     02     03     04     05     06     07     08     09     0a     0b     0c     0d     0e     0f
 	opBRK, opORA, opILL, opILL, opILL, opORA, opASL, opILL, opPHP, opORA, opASL, opILL, opILL, opORA, opASL, opILL,
 	// 10  11     12     13     14     15     16     17     18     19     1a     1b     1c     1d     1e     1f
@@ -398,7 +398,7 @@ func (m *M6502) Run(cycles uint) uint {
 
 		// Execute instruction and update consumed cycles
 		opcode := m.read8(m.pc)
-		clks += opcodeTable[opcode](m)
+		clks += opcodeFunc[opcode](m)
 	}
 
 	return clks
