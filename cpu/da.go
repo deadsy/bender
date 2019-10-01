@@ -413,9 +413,9 @@ func Disassemble(adr uint16, mem []byte) (string, int) {
 		ofs += 2
 		s = append(s, fmt.Sprintf("$%04x", operand))
 	case amAbsX:
-		s = append(s, "absolute, X-indexed")
+		s = append(s, "TODO absolute, X-indexed")
 	case amAbsY:
-		s = append(s, "absolute, Y-indexed")
+		s = append(s, "TODO absolute, Y-indexed")
 	case amImm:
 		// immediate - 1 byte operand
 		operand := mem[ofs]
@@ -424,9 +424,9 @@ func Disassemble(adr uint16, mem []byte) (string, int) {
 	case amImpl:
 		// implied - no operands
 	case amInd:
-		s = append(s, "indirect")
+		s = append(s, "TODO indirect")
 	case amXInd:
-		s = append(s, "X-indexed, indirect")
+		s = append(s, "TODO X-indexed, indirect")
 	case amIndY:
 		// indirect, Y-indexed - 1 byte operand
 		operand := mem[ofs]
@@ -439,14 +439,17 @@ func Disassemble(adr uint16, mem []byte) (string, int) {
 		dst := uint16(int(adr) + int(int8(operand)) + 2)
 		s = append(s, fmt.Sprintf("$%02x\t\t; $%04x", operand, dst))
 	case amZpg:
-		s = append(s, "zeropage")
+		// zeropage - 1 byte operand
+		operand := mem[ofs]
+		ofs++
+		s = append(s, fmt.Sprintf("$%02x", operand))
 	case amZpgX:
 		// zeropage, X-indexed - 1 byte operand
 		operand := mem[ofs]
 		ofs++
 		s = append(s, fmt.Sprintf("$%02x,x", operand))
 	case amZpgY:
-		s = append(s, "zeropage, Y-indexed")
+		s = append(s, "TODO zeropage, Y-indexed")
 	default:
 		panic("bad address mode")
 	}
