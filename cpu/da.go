@@ -20,20 +20,29 @@ import (
 
 //-----------------------------------------------------------------------------
 
-// Code Segment defines a contiguous area of memory.
+// CodeSegment defines a contiguous area of memory.
 type CodeSegment struct {
 	Base   uint16            // base address
 	Memory []byte            // memory content
 	Symbol map[uint16]string // symbol table
 }
 
-// Disassembly returns the result of the disassembler.
+// Disassembly returns the result of the disassembler call.
 type Disassembly struct {
-	Memory      string
-	Symbol      string
-	Instruction string
-	Comment     string
-	n           uint // length of decode
+	Dump        string // address and memory bytes
+	Symbol      string // symbol for the address (if any)
+	Instruction string // instruction decode
+	Comment     string // useful comment
+	Bytes       []byte // the bytes of the instruction
+}
+
+func (da *Disassembly) String() string {
+	s := make([]string, 2)
+	s[0] = fmt.Sprintf("%-16s %8s %-13s", da.Dump, da.Symbol, da.Instruction)
+	if da.Comment != "" {
+		s[1] = fmt.Sprintf(" ; %s", da.Comment)
+	}
+	return strings.Join(s, "")
 }
 
 //-----------------------------------------------------------------------------
@@ -49,7 +58,7 @@ func (cs *CodeSegment) getMem(adr uint16, n uint) ([]byte, error) {
 	return cs.Memory[ofs : ofs+int(n)], nil
 }
 
-func (cs *CodeSegment) daMemory(adr uint16, mem []byte) string {
+func (cs *CodeSegment) daDump(adr uint16, mem []byte) string {
 	s := make([]string, len(mem))
 	for i, v := range mem {
 		s[i] = fmt.Sprintf("%02x", v)
@@ -64,12 +73,12 @@ func (cs *CodeSegment) daSymbol(adr uint16) string {
 	return ""
 }
 
-func (cs *CodeSegment) daInstruction(adr uint16, mem []byte) string {
+func (cs *CodeSegment) daInstruction(adr uint16, mem []byte) (string, string) {
 
 	var s []string
+	var comment string
 
 	info := opcodeLookup(mem[0])
-	ofs := 1
 
 	// instruction mneumonic
 	s = append(s, info.ins)
@@ -82,7 +91,7 @@ func (cs *CodeSegment) daInstruction(adr uint16, mem []byte) string {
 		s = append(s, "a")
 	case amAbs:
 		// absolute - 2 byte operand
-		operand := int(mem[ofs]) + (int(mem[ofs+1]) << 8)
+		operand := int(mem[1]) + (int(mem[2]) << 8)
 		s = append(s, fmt.Sprintf("$%04x", operand))
 	case amAbsX:
 		s = append(s, "TODO absolute, X-indexed")
@@ -90,7 +99,7 @@ func (cs *CodeSegment) daInstruction(adr uint16, mem []byte) string {
 		s = append(s, "TODO absolute, Y-indexed")
 	case amImm:
 		// immediate - 1 byte operand
-		operand := mem[ofs]
+		operand := mem[1]
 		s = append(s, fmt.Sprintf("#$%02x", operand))
 	case amImpl:
 		// implied - no operands
@@ -100,20 +109,21 @@ func (cs *CodeSegment) daInstruction(adr uint16, mem []byte) string {
 		s = append(s, "TODO X-indexed, indirect")
 	case amIndY:
 		// indirect, Y-indexed - 1 byte operand
-		operand := mem[ofs]
+		operand := mem[1]
 		s = append(s, fmt.Sprintf("($%02x),y", operand))
 	case amRel:
 		// relative - 1 byte operand
-		operand := mem[ofs]
+		operand := mem[1]
+		s = append(s, fmt.Sprintf("$%02x", operand))
 		dst := uint16(int(adr) + int(int8(operand)) + 2)
-		s = append(s, fmt.Sprintf("$%02x\t\t; $%04x", operand, dst))
+		comment = fmt.Sprintf("$%04x", dst)
 	case amZpg:
 		// zeropage - 1 byte operand
-		operand := mem[ofs]
+		operand := mem[1]
 		s = append(s, fmt.Sprintf("$%02x", operand))
 	case amZpgX:
 		// zeropage, X-indexed - 1 byte operand
-		operand := mem[ofs]
+		operand := mem[1]
 		s = append(s, fmt.Sprintf("$%02x,x", operand))
 	case amZpgY:
 		s = append(s, "TODO zeropage, Y-indexed")
@@ -121,9 +131,10 @@ func (cs *CodeSegment) daInstruction(adr uint16, mem []byte) string {
 		panic("bad address mode")
 	}
 
-	return strings.Join(s, " ")
+	return strings.Join(s, " "), comment
 }
 
+// Disassemble a 6502 instruction from the code segment at the address.
 func (cs *CodeSegment) Disassemble(adr uint16) (*Disassembly, error) {
 
 	// get the instruction memory
@@ -136,7 +147,15 @@ func (cs *CodeSegment) Disassemble(adr uint16) (*Disassembly, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	instruction, comment := cs.daInstruction(adr, mem)
+
+	return &Disassembly{
+		Dump:        cs.daDump(adr, mem),
+		Symbol:      cs.daSymbol(adr),
+		Instruction: instruction,
+		Comment:     comment,
+		Bytes:       mem,
+	}, nil
 
 }
 

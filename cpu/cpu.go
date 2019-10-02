@@ -93,20 +93,20 @@ var modeDescr = map[adrMode]adrModeInfo{
 }
 
 var insLengthByMode = []uint{
-	1, // amNone
-	1, // amAcc
-	1, // amAbs
-	1, // amAbsX
-	1, // amAbsY
-	1, // amImm
-	1, // amImpl
-	1, // amInd
-	1, // amXInd
-	1, // amIndY
-	1, // amRel
-	1, // amZpg
-	1, // amZpgX
-	1, // amZpgY
+	1,     // amNone
+	1,     // amAcc
+	1 + 2, // amAbs
+	1 + 2, // amAbsX
+	1 + 2, // amAbsY
+	1 + 1, // amImm
+	1,     // amImpl
+	1 + 2, // amInd
+	1 + 1, // amXInd
+	1 + 1, // amIndY
+	1 + 1, // amRel
+	1 + 1, // amZpg
+	1 + 1, // amZpgX
+	1 + 1, // amZpgY
 }
 
 func insLength(code uint8) uint {

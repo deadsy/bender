@@ -57,7 +57,8 @@ func genOpcodeTable() string {
 	return strings.Join(s, "\n")
 }
 
-func GenCode() string {
+// GenOpcodeFunctions generates opcode table and template functions.
+func GenOpcodeFunctions() string {
 
 	s := make([]string, 2)
 
