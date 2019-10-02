@@ -1,9 +1,7 @@
 //-----------------------------------------------------------------------------
 /*
 
-6502 CPU Emulator
-
-See also: https://github.com/redcode/6502
+6502 CPU Definitions
 
 */
 //-----------------------------------------------------------------------------
@@ -14,9 +12,14 @@ package cpu
 
 // M6502 is the state for the 6502 CPU.
 type M6502 struct {
-	pc            uint16
-	s, p, a, x, y uint8
-	nmi, irq      bool
+	pc  uint16 // program counter
+	s   uint8  // stack pointer
+	p   uint8  // processor status flags
+	a   uint8  // accumulator
+	x   uint8  // x index
+	y   uint8  // y index
+	nmi bool   // nmi state
+	irq bool   // irq state
 }
 
 const nmiAddress = 0xFFFA
@@ -32,10 +35,11 @@ const initialX = 0x00
 const initialY = 0x00
 
 //-----------------------------------------------------------------------------
+// status flags
 
 const flagN = (1 << 7) // Negative
 const flagV = (1 << 6) // Overflow
-const flagB = (1 << 4) // "B" Flag
+const flagB = (1 << 4) // Break
 const flagD = (1 << 3) // Decimal
 const flagI = (1 << 2) // Interrupt Disable
 const flagZ = (1 << 1) // Zero
@@ -44,364 +48,339 @@ const flagC = (1 << 0) // Carry
 const flagNZ = (flagN | flagZ)
 const flagNZC = (flagN | flagZ | flagC)
 
-func (m *M6502) setNZ(val uint8) {
-	var flags uint8
-	if val != 0 {
-		flags = val & flagN
-	} else {
-		flags = flagZ
+//-----------------------------------------------------------------------------
+// address modes
+
+type adrMode int
+
+const (
+	amNone adrMode = iota
+	amAcc          // accumulator
+	amAbs          // absolute
+	amAbsX         // absolute, X-indexed
+	amAbsY         // absolute, Y-indexed
+	amImm          // immediate
+	amImpl         // implied
+	amInd          // indirect
+	amXInd         // X-indexed, indirect
+	amIndY         // indirect, Y-indexed
+	amRel          // relative
+	amZpg          // zeropage
+	amZpgX         // zeropage, X-indexed
+	amZpgY         // zeropage, Y-indexed
+)
+
+type adrModeInfo struct {
+	suffix string // function suffix
+	descr  string // mode description
+}
+
+var modeDescr = map[adrMode]adrModeInfo{
+	amNone: {"", ""},
+	amAcc:  {"acc", "accumulator"},
+	amAbs:  {"abs", "absolute"},
+	amAbsX: {"absx", "absolute, X-indexed"},
+	amAbsY: {"absy", "absolute, Y-indexed"},
+	amImm:  {"imm", "immediate"},
+	amImpl: {"impl", "implied"},
+	amInd:  {"ind", "indirect"},
+	amXInd: {"xind", "X-indexed, indirect"},
+	amIndY: {"indy", "indirect, Y-indexed"},
+	amRel:  {"rel", "relative"},
+	amZpg:  {"z", "zeropage"},
+	amZpgX: {"zx", "zeropage, X-indexed"},
+	amZpgY: {"zy", "zeropage, Y-indexed"},
+}
+
+var insLengthByMode = []uint{
+	1, // amNone
+	1, // amAcc
+	1, // amAbs
+	1, // amAbsX
+	1, // amAbsY
+	1, // amImm
+	1, // amImpl
+	1, // amInd
+	1, // amXInd
+	1, // amIndY
+	1, // amRel
+	1, // amZpg
+	1, // amZpgX
+	1, // amZpgY
+}
+
+func insLength(code uint8) uint {
+	return insLengthByMode[opcodeLookup(code).mode]
+}
+
+//-----------------------------------------------------------------------------
+// opcodes
+
+// instruction information
+type insInfo struct {
+	ins  string  // mneumonic
+	mode adrMode // address mode
+}
+
+// opcode table as a map, unspecified opcodes are illegal instructions
+var opcodeTable = map[uint8]insInfo{
+
+	0x00: insInfo{"brk", amImpl},
+	0x10: insInfo{"bpl", amRel},
+	0x20: insInfo{"jsr", amAbs},
+	0x30: insInfo{"bmi", amRel},
+	0x40: insInfo{"rti", amImpl},
+	0x50: insInfo{"bvc", amRel},
+	0x60: insInfo{"rts", amImpl},
+	0x70: insInfo{"bvs", amRel},
+	0x80: insInfo{"ill", amNone},
+	0x90: insInfo{"bcc", amRel},
+	0xa0: insInfo{"ldy", amImm},
+	0xb0: insInfo{"bcs", amRel},
+	0xc0: insInfo{"cpy", amImm},
+	0xd0: insInfo{"bne", amRel},
+	0xe0: insInfo{"cpx", amImm},
+	0xf0: insInfo{"beq", amImm},
+
+	0x01: insInfo{"ora", amXInd},
+	0x11: insInfo{"ora", amIndY},
+	0x21: insInfo{"and", amXInd},
+	0x31: insInfo{"and", amIndY},
+	0x41: insInfo{"eor", amXInd},
+	0x51: insInfo{"eor", amIndY},
+	0x61: insInfo{"adc", amXInd},
+	0x71: insInfo{"adc", amIndY},
+	0x81: insInfo{"sta", amXInd},
+	0x91: insInfo{"sta", amIndY},
+	0xa1: insInfo{"lda", amXInd},
+	0xb1: insInfo{"lda", amIndY},
+	0xc1: insInfo{"cmp", amXInd},
+	0xd1: insInfo{"cmp", amIndY},
+	0xe1: insInfo{"sbc", amXInd},
+	0xf1: insInfo{"sbc", amIndY},
+
+	0xa2: insInfo{"ldx", amImm},
+
+	0x04: insInfo{"ill", amNone},
+	0x14: insInfo{"ill", amNone},
+	0x24: insInfo{"bit", amZpg},
+	0x34: insInfo{"ill", amNone},
+	0x44: insInfo{"ill", amNone},
+	0x54: insInfo{"ill", amNone},
+	0x64: insInfo{"ill", amNone},
+	0x74: insInfo{"ill", amNone},
+	0x84: insInfo{"sty", amZpg},
+	0x94: insInfo{"sty", amZpgX},
+	0xa4: insInfo{"ldy", amZpg},
+	0xb4: insInfo{"ldy", amZpgX},
+	0xc4: insInfo{"cpy", amZpg},
+	0xd4: insInfo{"ill", amNone},
+	0xe4: insInfo{"cpx", amZpg},
+	0xf4: insInfo{"ill", amNone},
+
+	0x05: insInfo{"ora", amZpg},
+	0x15: insInfo{"ora", amZpgX},
+	0x25: insInfo{"and", amZpg},
+	0x35: insInfo{"and", amZpgX},
+	0x45: insInfo{"eor", amZpg},
+	0x55: insInfo{"eor", amZpgX},
+	0x65: insInfo{"adc", amZpg},
+	0x75: insInfo{"adc", amZpgX},
+	0x85: insInfo{"sta", amZpg},
+	0x95: insInfo{"sta", amZpgX},
+	0xa5: insInfo{"lda", amZpg},
+	0xb5: insInfo{"lda", amZpgX},
+	0xc5: insInfo{"cmp", amZpg},
+	0xd5: insInfo{"cmp", amZpgX},
+	0xe5: insInfo{"sbc", amZpg},
+	0xf5: insInfo{"sbc", amZpgX},
+
+	0x06: insInfo{"asl", amZpg},
+	0x16: insInfo{"asl", amZpgX},
+	0x26: insInfo{"rol", amZpg},
+	0x36: insInfo{"rol", amZpgX},
+	0x46: insInfo{"lsr", amZpg},
+	0x56: insInfo{"lsr", amZpgX},
+	0x66: insInfo{"ror", amZpg},
+	0x76: insInfo{"ror", amZpgX},
+	0x86: insInfo{"stx", amZpg},
+	0x96: insInfo{"stx", amZpgY},
+	0xa6: insInfo{"ldx", amZpg},
+	0xb6: insInfo{"ldx", amZpgY},
+	0xc6: insInfo{"dec", amZpg},
+	0xd6: insInfo{"dec", amZpgX},
+	0xe6: insInfo{"inc", amZpg},
+	0xf6: insInfo{"inc", amZpgX},
+
+	0x08: insInfo{"php", amImpl},
+	0x18: insInfo{"clc", amImpl},
+	0x28: insInfo{"plp", amImpl},
+	0x38: insInfo{"sec", amImpl},
+	0x48: insInfo{"pha", amImpl},
+	0x58: insInfo{"cli", amImpl},
+	0x68: insInfo{"pla", amImpl},
+	0x78: insInfo{"sei", amImpl},
+	0x88: insInfo{"dey", amImpl},
+	0x98: insInfo{"tya", amImpl},
+	0xa8: insInfo{"tay", amImpl},
+	0xb8: insInfo{"clv", amImpl},
+	0xc8: insInfo{"iny", amImpl},
+	0xd8: insInfo{"cld", amImpl},
+	0xe8: insInfo{"inx", amImpl},
+	0xf8: insInfo{"sed", amImpl},
+
+	0x09: insInfo{"ora", amImm},
+	0x19: insInfo{"ora", amAbsY},
+	0x29: insInfo{"and", amImm},
+	0x39: insInfo{"and", amAbsY},
+	0x49: insInfo{"eor", amImm},
+	0x59: insInfo{"eor", amAbsY},
+	0x69: insInfo{"adc", amImm},
+	0x79: insInfo{"adc", amAbsY},
+	0x89: insInfo{"ill", amNone},
+	0x99: insInfo{"sta", amAbsY},
+	0xa9: insInfo{"lda", amImm},
+	0xb9: insInfo{"lda", amAbsY},
+	0xc9: insInfo{"cmp", amImm},
+	0xd9: insInfo{"cmp", amAbsY},
+	0xe9: insInfo{"sbc", amImm},
+	0xf9: insInfo{"sbc", amAbsY},
+
+	0x0a: insInfo{"asl", amAcc},
+	0x1a: insInfo{"ill", amNone},
+	0x2a: insInfo{"rol", amAcc},
+	0x3a: insInfo{"ill", amNone},
+	0x4a: insInfo{"lsr", amAcc},
+	0x5a: insInfo{"ill", amNone},
+	0x6a: insInfo{"ror", amAcc},
+	0x7a: insInfo{"ill", amNone},
+	0x8a: insInfo{"txa", amImpl},
+	0x9a: insInfo{"txs", amImpl},
+	0xaa: insInfo{"tax", amImpl},
+	0xba: insInfo{"tsx", amImpl},
+	0xca: insInfo{"dex", amImpl},
+	0xda: insInfo{"ill", amNone},
+	0xea: insInfo{"nop", amImpl},
+	0xfa: insInfo{"ill", amNone},
+
+	0x0c: insInfo{"ill", amNone},
+	0x1c: insInfo{"ill", amNone},
+	0x2c: insInfo{"bit", amAbs},
+	0x3c: insInfo{"ill", amNone},
+	0x4c: insInfo{"jmp", amAbs},
+	0x5c: insInfo{"ill", amNone},
+	0x6c: insInfo{"jmp", amInd},
+	0x7c: insInfo{"ill", amNone},
+	0x8c: insInfo{"sty", amAbs},
+	0x9c: insInfo{"ill", amNone},
+	0xac: insInfo{"ldy", amAbs},
+	0xbc: insInfo{"ldy", amAbsX},
+	0xcc: insInfo{"cpy", amAbs},
+	0xdc: insInfo{"ill", amNone},
+	0xec: insInfo{"cpx", amAbs},
+	0xfc: insInfo{"ill", amNone},
+
+	0x0d: insInfo{"ora", amAbs},
+	0x1d: insInfo{"ora", amAbsX},
+	0x2d: insInfo{"and", amAbs},
+	0x3d: insInfo{"and", amAbsX},
+	0x4d: insInfo{"eor", amAbs},
+	0x5d: insInfo{"eor", amAbsX},
+	0x6d: insInfo{"adc", amAbs},
+	0x7d: insInfo{"adc", amAbsX},
+	0x8d: insInfo{"sta", amAbs},
+	0x9d: insInfo{"sta", amAbsX},
+	0xad: insInfo{"lda", amAbs},
+	0xbd: insInfo{"lda", amAbsX},
+	0xcd: insInfo{"cmp", amAbs},
+	0xdd: insInfo{"cmp", amAbsX},
+	0xed: insInfo{"sbc", amAbs},
+	0xfd: insInfo{"sbc", amAbsX},
+
+	0x0e: insInfo{"asl", amAbs},
+	0x1e: insInfo{"asl", amAbsX},
+	0x2e: insInfo{"rol", amAbs},
+	0x3e: insInfo{"rol", amAbsX},
+	0x4e: insInfo{"lsr", amAbs},
+	0x5e: insInfo{"lsr", amAbsX},
+	0x6e: insInfo{"ror", amAbs},
+	0x7e: insInfo{"ror", amAbsX},
+	0x8e: insInfo{"stx", amAbs},
+	0x9e: insInfo{"ill", amNone},
+	0xae: insInfo{"ldx", amAbs},
+	0xbe: insInfo{"ldx", amAbsY},
+	0xce: insInfo{"dec", amAbs},
+	0xde: insInfo{"dec", amAbsX},
+	0xee: insInfo{"inc", amAbs},
+	0xfe: insInfo{"inc", amAbsX},
+}
+
+// opcodeLookup returns the instruction information for this opcode.
+func opcodeLookup(code uint8) *insInfo {
+	if info, ok := opcodeTable[code]; ok {
+		return &info
 	}
-	m.p = (m.p &^ flagNZ) | flags
+	return &insInfo{"ill", amNone}
 }
 
-//-----------------------------------------------------------------------------
-
-func (m *M6502) read8(adr uint16) uint8 {
-	return 0
-}
-
-func (m *M6502) read16(adr uint16) uint16 {
-	return 0
-}
-
-func (m *M6502) readPointer(adr uint16) uint16 {
-	return 0
-}
-
-//-----------------------------------------------------------------------------
-
-func (m *M6502) push8(val uint8) {
-}
-
-func (m *M6502) push16(val uint16) {
-}
-
-func (m *M6502) pop16() uint16 {
-	return 0
-}
-
-//-----------------------------------------------------------------------------
-
-// jmp WORD
-func opJMPabs(m *M6502) uint {
-	m.pc = m.read16(m.pc + 1)
-	return 3
-}
-
-// jmp (WORD)
-func opJMPind(m *M6502) uint {
-	m.pc = m.read16(m.read16(m.pc + 1))
-	return 5
-}
-
-// jsr WORD
-func opJSR(m *M6502) uint {
-	m.push16(m.pc + 2)
-	m.pc = m.read16(m.pc + 1)
-	return 6
-}
-
-// rts
-func opRTS(m *M6502) uint {
-	m.pc = m.pop16() + 1
-	return 6
-}
-
-func opADC(m *M6502) uint {
-	return 0
-}
-func opAND(m *M6502) uint {
-	return 0
-}
-func opASL(m *M6502) uint {
-	return 0
-}
-func opBCC(m *M6502) uint {
-	return 0
-}
-func opBCS(m *M6502) uint {
-	return 0
-}
-func opBEQ(m *M6502) uint {
-	return 0
-}
-func opBIT(m *M6502) uint {
-	return 0
-}
-func opBMI(m *M6502) uint {
-	return 0
-}
-func opBNE(m *M6502) uint {
-	return 0
-}
-func opBPL(m *M6502) uint {
-	return 0
-}
-
-func opBVC(m *M6502) uint {
-	return 0
-}
-func opBVS(m *M6502) uint {
-	return 0
-}
-func opCLC(m *M6502) uint {
-	return 0
-}
-func opCLD(m *M6502) uint {
-	return 0
-}
-func opCLI(m *M6502) uint {
-	return 0
-}
-func opCLV(m *M6502) uint {
-	return 0
-}
-func opCMP(m *M6502) uint {
-	return 0
-}
-func opCPX(m *M6502) uint {
-	return 0
-}
-func opCPY(m *M6502) uint {
-	return 0
-}
-func opDEC(m *M6502) uint {
-	return 0
-}
-func opDEX(m *M6502) uint {
-	return 0
-}
-func opDEY(m *M6502) uint {
-	return 0
-}
-func opEOR(m *M6502) uint {
-	return 0
-}
-func opINC(m *M6502) uint {
-	return 0
-}
-func opINX(m *M6502) uint {
-	return 0
-}
-func opINY(m *M6502) uint {
-	return 0
-}
-
-func opLDA(m *M6502) uint {
-	return 0
-}
-func opLDX(m *M6502) uint {
-	return 0
-}
-func opLDY(m *M6502) uint {
-	return 0
-}
-func opLSR(m *M6502) uint {
-	return 0
-}
-func opNOP(m *M6502) uint {
-	return 0
-}
-func opORA(m *M6502) uint {
-	return 0
-}
-func opPHA(m *M6502) uint {
-	return 0
-}
-func opPHP(m *M6502) uint {
-	return 0
-}
-func opPLA(m *M6502) uint {
-	return 0
-}
-func opPLP(m *M6502) uint {
-	return 0
-}
-func opROL(m *M6502) uint {
-	return 0
-}
-func opROR(m *M6502) uint {
-	return 0
-}
-func opRTI(m *M6502) uint {
-	return 0
-}
-
-func opSBC(m *M6502) uint {
-	return 0
-}
-func opSEC(m *M6502) uint {
-	return 0
-}
-func opSED(m *M6502) uint {
-	return 0
-}
-func opSEI(m *M6502) uint {
-	return 0
-}
-func opSTA(m *M6502) uint {
-	return 0
-}
-func opSTX(m *M6502) uint {
-	return 0
-}
-func opSTY(m *M6502) uint {
-	return 0
-}
-
-func opTSX(m *M6502) uint {
-	return 0
-}
-
-func opTXS(m *M6502) uint {
-	return 0
-}
-
-func opTAX(m *M6502) uint {
-	m.pc++
-	m.x = m.a
-	m.setNZ(m.x)
-	return 2
-}
-
-func opTAY(m *M6502) uint {
-	m.pc++
-	m.y = m.a
-	m.setNZ(m.y)
-	return 2
-}
-
-func opTXA(m *M6502) uint {
-	m.pc++
-	m.a = m.x
-	m.setNZ(m.a)
-	return 2
-}
-
-func opTYA(m *M6502) uint {
-	m.pc++
-	m.a = m.y
-	m.setNZ(m.a)
-	return 2
-}
-
-func opBRK(m *M6502) uint {
-	m.read8(m.pc + 1)
-	m.push16(m.pc + 2)
-	m.push8(m.p | flagB)
-	m.p |= flagB | flagI
-	m.pc = m.readPointer(brkAddress)
-	return 7
-}
-
-func opILL(m *M6502) uint {
-	return 2
-}
-
-type opFunc func(m *M6502) uint
-
-var opcodeFunc = [256]opFunc{
-	// 00  01     02     03     04     05     06     07     08     09     0a     0b     0c     0d     0e     0f
-	opBRK, opORA, opILL, opILL, opILL, opORA, opASL, opILL, opPHP, opORA, opASL, opILL, opILL, opORA, opASL, opILL,
-	// 10  11     12     13     14     15     16     17     18     19     1a     1b     1c     1d     1e     1f
-	opBPL, opORA, opILL, opILL, opILL, opORA, opASL, opILL, opCLC, opORA, opILL, opILL, opILL, opORA, opASL, opILL,
-	// 20  21     22     23     24     25     26     27     28     29     2a     2b     2c     2d     2e     2f
-	opJSR, opAND, opILL, opILL, opBIT, opAND, opROL, opILL, opPLP, opAND, opROL, opILL, opBIT, opAND, opROL, opILL,
-	// 30  31     32     33     34     35     36     37     38     39     3a     3b     3c     3d     3e     3f
-	opBMI, opAND, opILL, opILL, opILL, opAND, opROL, opILL, opSEC, opAND, opILL, opILL, opILL, opAND, opROL, opILL,
-	// 40  41     42     43     44     45     46     47     48     49     4a     4b     4c     4d     4e     4f
-	opRTI, opEOR, opILL, opILL, opILL, opEOR, opLSR, opILL, opPHA, opEOR, opLSR, opILL, opJMPabs, opEOR, opLSR, opILL,
-	// 50  51     52     53     54     55     56     57     58     59     5a     5b     5c     5d     5e     5f
-	opBVC, opEOR, opILL, opILL, opILL, opEOR, opLSR, opILL, opCLI, opEOR, opILL, opILL, opILL, opEOR, opLSR, opILL,
-	// 60  61     62     63     64     65     66     67     68     69     6a     6b     6c     6d     6e     6f
-	opRTS, opADC, opILL, opILL, opILL, opADC, opROR, opILL, opPLA, opADC, opROR, opILL, opJMPind, opADC, opROR, opILL,
-	// 70  71     72     73     74     75     76     77     78     79     7a     7b     7c     7d     7e     7f
-	opBVS, opADC, opILL, opILL, opILL, opADC, opROR, opILL, opSEI, opADC, opILL, opILL, opILL, opADC, opROR, opILL,
-	// 80  81     82     83     84     85     86     87     88     89     8a     8b     8c     8d     8e     8f
-	opILL, opSTA, opILL, opILL, opSTY, opSTA, opSTX, opILL, opDEY, opILL, opTXA, opILL, opSTY, opSTA, opSTX, opILL,
-	// 90  91     92     93     94     95     96     97     98     99     9a     9b     9c     9d     9e     9f
-	opBCC, opSTA, opILL, opILL, opSTY, opSTA, opSTX, opILL, opTYA, opSTA, opTXS, opILL, opILL, opSTA, opILL, opILL,
-	// a0  a1     a2     a3     a4     a5     a6     a7     a8     a9     aa     ab     ac     ad     ae     af
-	opLDY, opLDA, opLDX, opILL, opLDY, opLDA, opLDX, opILL, opTAY, opLDA, opTAX, opILL, opLDY, opLDA, opLDX, opILL,
-	// b0  b1     b2     b3     b4     b5     b6     b7     b8     b9     ba     bb     bc     bd     be     bf
-	opBCS, opLDA, opILL, opILL, opLDY, opLDA, opLDX, opILL, opCLV, opLDA, opTSX, opILL, opLDY, opLDA, opLDX, opILL,
-	// c0  c1     c2     c3     c4     c5     c6     c7     c8     c9     ca     cb     cc     cd     ce     cf
-	opCPY, opCMP, opILL, opILL, opCPY, opCMP, opDEC, opILL, opINY, opCMP, opDEX, opILL, opCPY, opCMP, opDEC, opILL,
-	// d0  d1     d2     d3     d4     d5     d6     d7     d8     d9     da     db     dc     dd     de     df
-	opBNE, opCMP, opILL, opILL, opILL, opCMP, opDEC, opILL, opCLD, opCMP, opILL, opILL, opILL, opCMP, opDEC, opILL,
-	// e0  e1     e2     e3     e4     e5     e6     e7     e8     e9     ea     eb     ec     ed     ee     ef
-	opCPX, opSBC, opILL, opILL, opCPX, opSBC, opINC, opILL, opINX, opSBC, opNOP, opILL, opCPX, opSBC, opINC, opILL,
-	// f0  f1     f2     f3     f4     f5     f6     f7     f8     f9     fa     fb     fc     fd     fe     ff
-	opBEQ, opSBC, opILL, opILL, opILL, opSBC, opINC, opILL, opSED, opSBC, opILL, opILL, opILL, opSBC, opINC, opILL,
-}
-
-// done 0,1,2,3,4,5,6,7
-
-//-----------------------------------------------------------------------------
-
-// New6502 returns a 6502 CPU in the powered-on and reset state.
-func New6502() *M6502 {
-	var m M6502
-	m.Power(true)
-	m.Reset()
-	return &m
-}
-
-// Power on/off the 6502 CPU.
-func (m *M6502) Power(state bool) {
-	if state {
-		m.pc = initialPC
-		m.s = initialS
-		m.p = initialP
-		m.a = initialA
-		m.x = initialX
-		m.y = initialY
-		m.irq = false
-		m.nmi = false
-	} else {
-		m.pc = 0
-		m.s = 0
-		m.p = 0
-		m.a = 0
-		m.x = 0
-		m.y = 0
-		m.irq = false
-		m.nmi = false
-	}
-}
-
-// Reset the 6502 CPU.
-func (m *M6502) Reset() {
-	m.pc = m.readPointer(resetAddress)
-	m.s = initialS
-	m.p = initialP
-	m.irq = false
-	m.nmi = false
-}
-
-// NMI generates a non-maskable-interrupt.
-func (m *M6502) NMI() {
-	m.nmi = true
-}
-
-// IRQ generates an interrupt request.
-func (m *M6502) IRQ(state bool) {
-	m.irq = state
-}
-
-// Run the 6502 CPU for a number of clock cycles.
-func (m *M6502) Run(cycles uint) uint {
-
-	var clks uint
-
-	for clks < cycles {
-
-		// Execute instruction and update consumed cycles
-		opcode := m.read8(m.pc)
-		clks += opcodeFunc[opcode](m)
-	}
-
-	return clks
+// insDescr maps the instruction mneumonic onto a full description.
+var insDescr = map[string]string{
+	"adc": "add with carry",
+	"and": "and (with accumulator)",
+	"asl": "arithmetic shift left",
+	"bcc": "branch on carry clear",
+	"bcs": "branch on carry set",
+	"beq": "branch on equal (zero set)",
+	"bit": "bit test",
+	"bmi": "branch on minus (negative set)",
+	"bne": "branch on not equal (zero clear)",
+	"bpl": "branch on plus (negative clear)",
+	"brk": "break / interrupt",
+	"bvc": "branch on overflow clear",
+	"bvs": "branch on overflow set",
+	"clc": "clear carry",
+	"cld": "clear decimal",
+	"cli": "clear interrupt disable",
+	"clv": "clear overflow",
+	"cmp": "compare (with accumulator)",
+	"cpx": "compare with X",
+	"cpy": "compare with Y",
+	"dec": "decrement",
+	"dex": "decrement X",
+	"dey": "decrement Y",
+	"eor": "exclusive or (with accumulator)",
+	"inc": "increment",
+	"inx": "increment X",
+	"iny": "increment Y",
+	"jmp": "jump",
+	"jsr": "jump subroutine",
+	"lda": "load accumulator",
+	"ldx": "load X",
+	"ldy": "load Y",
+	"lsr": "logical shift right",
+	"nop": "no operation",
+	"ora": "or with accumulator",
+	"pha": "push accumulator",
+	"php": "push processor status (SR)",
+	"pla": "pull accumulator",
+	"plp": "pull processor status (SR)",
+	"rol": "rotate left",
+	"ror": "rotate right",
+	"rti": "return from interrupt",
+	"rts": "return from subroutine",
+	"sbc": "subtract with carry",
+	"sec": "set carry",
+	"sed": "set decimal",
+	"sei": "set interrupt disable",
+	"sta": "store accumulator",
+	"stx": "store X",
+	"sty": "store Y",
+	"tax": "transfer accumulator to X",
+	"tay": "transfer accumulator to Y",
+	"tsx": "transfer stack pointer to X",
+	"txa": "transfer X to accumulator",
+	"txs": "transfer X to stack pointer",
+	"tya": "transfer Y to accumulator",
 }
 
 //-----------------------------------------------------------------------------
