@@ -1,5 +1,6 @@
 
 DIRS = da \
+       emu \
        gen \
 
 all:
