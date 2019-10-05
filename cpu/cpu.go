@@ -122,8 +122,8 @@ type insInfo struct {
 	mode adrMode // address mode
 }
 
-// opcode table as a map, unspecified opcodes are illegal instructions
-var opcodeTable = map[uint8]insInfo{
+// opcodeInfo is the opcode table as a map, unspecified opcodes are illegal instructions
+var opcodeInfo = map[uint8]insInfo{
 
 	0x00: insInfo{"brk", amImpl},
 	0x10: insInfo{"bpl", amRel},
@@ -317,7 +317,7 @@ var opcodeTable = map[uint8]insInfo{
 
 // opcodeLookup returns the instruction information for this opcode.
 func opcodeLookup(code uint8) *insInfo {
-	if info, ok := opcodeTable[code]; ok {
+	if info, ok := opcodeInfo[code]; ok {
 		return &info
 	}
 	return &insInfo{"ill", amNone}
