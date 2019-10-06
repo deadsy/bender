@@ -29,27 +29,42 @@ func (m *M6502) setNZ(val uint8) {
 //-----------------------------------------------------------------------------
 
 func (m *M6502) read8(adr uint16) uint8 {
-	return 0
+	return m.mem.Read8(adr)
 }
 
 func (m *M6502) read16(adr uint16) uint16 {
-	return 0
+	l := uint16(m.mem.Read8(adr))
+	h := uint16(m.mem.Read8(adr + 1))
+	return (h << 8) | l
 }
 
 func (m *M6502) readPointer(adr uint16) uint16 {
-	return 0
+	return m.read16(adr)
 }
 
 //-----------------------------------------------------------------------------
 
 func (m *M6502) push8(val uint8) {
+	m.mem.Write8(stkAddress+uint16(m.s), val)
+	m.s--
+}
+
+func (m *M6502) pop8() uint8 {
+	m.s++
+	return m.mem.Read8(stkAddress + uint16(m.s))
 }
 
 func (m *M6502) push16(val uint16) {
+	m.mem.Write8(stkAddress+uint16(m.s), uint8(val>>8))
+	m.mem.Write8(stkAddress+uint16(m.s-1), uint8(val))
+	m.s -= 2
 }
 
 func (m *M6502) pop16() uint16 {
-	return 0
+	l := uint16(m.mem.Read8(stkAddress + uint16(m.s+1)))
+	h := uint16(m.mem.Read8(stkAddress + uint16(m.s+2)))
+	m.s += 2
+	return (h << 8) | l
 }
 
 //-----------------------------------------------------------------------------
@@ -1002,8 +1017,9 @@ var opcodeTable = [256]opFunc{
 //-----------------------------------------------------------------------------
 
 // New6502 returns a 6502 CPU in the powered-on and reset state.
-func New6502() *M6502 {
+func New6502(mem Memory) *M6502 {
 	var m M6502
+	m.mem = mem
 	m.Power(true)
 	m.Reset()
 	return &m
@@ -1034,7 +1050,7 @@ func (m *M6502) Power(state bool) {
 
 // Reset the 6502 CPU.
 func (m *M6502) Reset() {
-	m.pc = m.readPointer(resetAddress)
+	m.pc = m.readPointer(rstAddress)
 	m.s = initialS
 	m.p = initialP
 	m.irq = false
@@ -1057,6 +1073,30 @@ func (m *M6502) Run(cycles uint) uint {
 	var clks uint
 
 	for clks < cycles {
+
+		// nmi handling
+		if m.nmi {
+			m.nmi = false                    // clear the nmi
+			m.p &= ^flagB                    // clear the break flag
+			m.push16(m.pc)                   // save return addres in the stack.
+			m.push8(m.p)                     // save current status in the stack.
+			m.pc = m.readPointer(nmiAddress) // make PC point to the NMI routine.
+			m.p |= flagI                     // disable interrupts
+			clks += 7                        // accepting an NMI consumes 7 ticks.
+			continue
+		}
+
+		// irq handling
+		if m.irq && (m.p&flagI == 0) {
+			m.p &= ^flagB
+			m.push16(m.pc)
+			m.push8(m.p)
+			m.pc = m.readPointer(irqAddress)
+			m.p |= flagI
+			clks += 7
+			continue
+		}
+
 		opcode := m.read8(m.pc)
 		clks += opcodeTable[opcode](m)
 	}

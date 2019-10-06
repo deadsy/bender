@@ -10,6 +10,14 @@ package cpu
 
 //-----------------------------------------------------------------------------
 
+// Memory is an interface to the memory of the target system.
+type Memory interface {
+	Read8(adr uint16) uint8
+	Write8(adr uint16, val uint8)
+}
+
+//-----------------------------------------------------------------------------
+
 // M6502 is the state for the 6502 CPU.
 type M6502 struct {
 	pc  uint16 // program counter
@@ -20,12 +28,14 @@ type M6502 struct {
 	y   uint8  // y index
 	nmi bool   // nmi state
 	irq bool   // irq state
+	mem Memory // memory of the target system
 }
 
-const nmiAddress = 0xFFFA
-const resetAddress = 0XFFFC
-const irqAddress = 0xFFFE
-const brkAddress = 0xFFFE
+const nmiAddress = 0xFFFA // non maskable interrupt
+const rstAddress = 0XFFFC // reset
+const irqAddress = 0xFFFE // interrupt request
+const brkAddress = 0xFFFE // break
+const stkAddress = 0x0100 // stack
 
 const initialPC = 0x0000
 const initialS = 0xFD
@@ -37,13 +47,13 @@ const initialY = 0x00
 //-----------------------------------------------------------------------------
 // status flags
 
-const flagN = (1 << 7) // Negative
-const flagV = (1 << 6) // Overflow
-const flagB = (1 << 4) // Break
-const flagD = (1 << 3) // Decimal
-const flagI = (1 << 2) // Interrupt Disable
-const flagZ = (1 << 1) // Zero
-const flagC = (1 << 0) // Carry
+const flagN = uint8(1 << 7) // Negative
+const flagV = uint8(1 << 6) // Overflow
+const flagB = uint8(1 << 4) // Break
+const flagD = uint8(1 << 3) // Decimal
+const flagI = uint8(1 << 2) // Interrupt Disable
+const flagZ = uint8(1 << 1) // Zero
+const flagC = uint8(1 << 0) // Carry
 
 const flagNZ = (flagN | flagZ)
 const flagNZC = (flagN | flagZ | flagC)
