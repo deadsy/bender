@@ -9,6 +9,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
 	"os"
 
@@ -36,7 +37,9 @@ func (m *memory) Write8(adr uint16, val uint8) {
 }
 
 func newMemory() *memory {
-	return &memory{}
+	m := memory{}
+	rand.Read(m.ram[:])
+	return &m
 }
 
 //-----------------------------------------------------------------------------
@@ -69,7 +72,7 @@ func main() {
 	c := cli.NewCLI(newUserApp())
 	c.HistoryLoad(historyPath)
 	c.SetRoot(menuRoot)
-	c.SetPrompt("mon> ")
+	c.SetPrompt("emu> ")
 	for c.Running() {
 		c.Run()
 	}

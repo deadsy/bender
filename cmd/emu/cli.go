@@ -10,6 +10,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	cli "github.com/deadsy/go-cli"
 )
@@ -42,7 +43,7 @@ var cmdExit = cli.Leaf{
 // memory functions
 
 // memArgs converts memory arguments to an (address, size) tuple.
-func memArgs(args []string) (uint16, uint16, error) {
+func memArgs(args []string) (uint16, uint, error) {
 	err := cli.CheckArgc(args, []int{0, 1, 2})
 	if err != nil {
 		return 0, 0, err
@@ -58,26 +59,47 @@ func memArgs(args []string) (uint16, uint16, error) {
 	// size
 	size := 0x40 // default size
 	if len(args) >= 2 {
-		size, err = cli.IntArg(args[1], [2]int{1, 0xffff}, 16)
+		size, err = cli.IntArg(args[1], [2]int{1, 0x10000}, 16)
 		if err != nil {
 			return 0, 0, err
 		}
 	}
-	return uint16(adr), uint16(size), nil
+	return uint16(adr), uint(size), nil
 }
 
 var cmdMemDisplay = cli.Leaf{
 	Descr: "display memory",
 	F: func(c *cli.CLI, args []string) {
-
 		adr, size, err := memArgs(args)
 		if err != nil {
 			c.User.Put(fmt.Sprintf("%s\n", err))
 			return
 		}
-
-		fmt.Printf("%x %x\n", adr, size)
-
+		// round down address to 16 byte boundary
+		adr &= ^uint16(15)
+		// round up n to an integral multiple of 16 bytes
+		size = (size + 15) & ^uint(15)
+		// print the header
+		c.User.Put("addr  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F\n")
+		// read and print the data
+		for i := 0; i < int(size>>4); i++ {
+			// read 16 bytes per line
+			var data [16]string
+			var ascii [16]string
+			for j := 0; j < 16; j++ {
+				x := c.User.(*userApp).mem.Read8(adr + uint16(j))
+				data[j] = fmt.Sprintf("%02x", x)
+				if x >= 32 && x <= 126 {
+					ascii[j] = fmt.Sprintf("%c", x)
+				} else {
+					ascii[j] = "."
+				}
+			}
+			dataStr := strings.Join(data[:], " ")
+			asciiStr := strings.Join(ascii[:], "")
+			c.User.Put(fmt.Sprintf("%04x  %s  %s\n", adr, dataStr, asciiStr))
+			adr += 16
+		}
 	},
 }
 
