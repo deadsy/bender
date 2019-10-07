@@ -69,53 +69,138 @@ func (m *M6502) pop16() uint16 {
 
 //-----------------------------------------------------------------------------
 
+func (m *M6502) readIndirectX() (uint8, uint) {
+	return 0, 0
+}
+
+func (m *M6502) readZeroPage() (uint8, uint) {
+	return 0, 0
+}
+
+func (m *M6502) readImmediate() (uint8, uint) {
+	return 0, 0
+}
+
+func (m *M6502) readAbsolute() (uint8, uint) {
+	return 0, 0
+}
+
+func (m *M6502) readIndirectY() (uint8, uint) {
+	return 0, 0
+}
+
+func (m *M6502) readZeroPageX() (uint8, uint) {
+	return 0, 0
+}
+
+func (m *M6502) readAbsoluteY() (uint8, uint) {
+	return 0, 0
+}
+
+func (m *M6502) readAbsoluteX() (uint8, uint) {
+	return 0, 0
+}
+
+//-----------------------------------------------------------------------------
+// ADC add with carry
+
+func (m *M6502) opADC(v uint8) {
+	c := m.p & flagC
+	if m.p&flagD != 0 {
+		l := uint(m.a&0x0F) + uint(v&0x0F) + uint(c)
+		h := uint(m.a&0xF0) + uint(v&0xF0)
+		m.p &= ^(flagV | flagC | flagN | flagZ)
+		if (l+h)&0xFF == 0 {
+			m.p |= flagZ
+		}
+		if l > 0x09 {
+			h += 0x10
+			l += 0x06
+		}
+		if h&0x80 != 0 {
+			m.p |= flagN
+		}
+		if ^(m.a^v)&(m.a^uint8(h))&0x80 != 0 {
+			m.p |= flagV
+		}
+		if h > 0x90 {
+			h += 0x60
+		}
+		if h>>8 != 0 {
+			m.p |= flagC
+		}
+		m.a = uint8(l&0x0F) | uint8(h&0xF0)
+	} else {
+		t := uint(m.a) + uint(v) + uint(c)
+		m.p &= ^(flagV | flagC)
+		if ^(m.a^v)&(m.a^uint8(t))&0x80 != 0 {
+			m.p |= flagV
+		}
+		if t>>8 != 0 {
+			m.p |= flagC
+		}
+		m.a = uint8(t)
+		m.setNZ(m.a)
+	}
+}
+
 // opADCabs, add with carry, absolute mode
 func opADCabs(m *M6502) uint {
-	emuTODO()
-	return 0
+	v, n := m.readAbsolute()
+	m.opADC(v)
+	return n
 }
 
 // opADCabsx, add with carry, absolute, X-indexed mode
 func opADCabsx(m *M6502) uint {
-	emuTODO()
-	return 0
+	v, n := m.readAbsoluteX()
+	m.opADC(v)
+	return n
 }
 
 // opADCabsy, add with carry, absolute, Y-indexed mode
 func opADCabsy(m *M6502) uint {
-	emuTODO()
-	return 0
+	v, n := m.readAbsoluteY()
+	m.opADC(v)
+	return n
 }
 
 // opADCimm, add with carry, immediate mode
 func opADCimm(m *M6502) uint {
-	emuTODO()
-	return 0
+	v, n := m.readImmediate()
+	m.opADC(v)
+	return n
 }
 
 // opADCindy, add with carry, indirect, Y-indexed mode
 func opADCindy(m *M6502) uint {
-	emuTODO()
-	return 0
+	v, n := m.readIndirectY()
+	m.opADC(v)
+	return n
 }
 
 // opADCxind, add with carry, X-indexed, indirect mode
 func opADCxind(m *M6502) uint {
-	emuTODO()
-	return 0
+	v, n := m.readIndirectX()
+	m.opADC(v)
+	return n
 }
 
 // opADCz, add with carry, zeropage mode
 func opADCz(m *M6502) uint {
-	emuTODO()
-	return 0
+	v, n := m.readZeroPage()
+	m.opADC(v)
+	return n
 }
 
 // opADCzx, add with carry, zeropage, X-indexed mode
 func opADCzx(m *M6502) uint {
-	emuTODO()
-	return 0
+	v, n := m.readZeroPageX()
+	m.opADC(v)
+	return n
 }
+
+//-----------------------------------------------------------------------------
 
 // opANDabs, and (with accumulator), absolute mode
 func opANDabs(m *M6502) uint {
