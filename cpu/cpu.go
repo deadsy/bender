@@ -20,12 +20,12 @@ type Memory interface {
 
 // M6502 is the state for the 6502 CPU.
 type M6502 struct {
-	pc  uint16 // program counter
-	s   uint8  // stack pointer
-	p   uint8  // processor status flags
-	a   uint8  // accumulator
-	x   uint8  // x index
-	y   uint8  // y index
+	PC  uint16 // program counter
+	S   uint8  // stack pointer
+	P   uint8  // processor status flags
+	A   uint8  // accumulator
+	X   uint8  // x index
+	Y   uint8  // y index
 	nmi bool   // nmi state
 	irq bool   // irq state
 	mem Memory // memory of the target system

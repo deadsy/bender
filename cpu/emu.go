@@ -23,7 +23,7 @@ func (m *M6502) setNZ(val uint8) {
 	} else {
 		flags = flagZ
 	}
-	m.p = (m.p &^ flagNZ) | flags
+	m.P = (m.P &^ flagNZ) | flags
 }
 
 //-----------------------------------------------------------------------------
@@ -45,25 +45,25 @@ func (m *M6502) readPointer(adr uint16) uint16 {
 //-----------------------------------------------------------------------------
 
 func (m *M6502) push8(val uint8) {
-	m.mem.Write8(stkAddress+uint16(m.s), val)
-	m.s--
+	m.mem.Write8(stkAddress+uint16(m.S), val)
+	m.S--
 }
 
 func (m *M6502) pop8() uint8 {
-	m.s++
-	return m.mem.Read8(stkAddress + uint16(m.s))
+	m.S++
+	return m.mem.Read8(stkAddress + uint16(m.S))
 }
 
 func (m *M6502) push16(val uint16) {
-	m.mem.Write8(stkAddress+uint16(m.s), uint8(val>>8))
-	m.mem.Write8(stkAddress+uint16(m.s-1), uint8(val))
-	m.s -= 2
+	m.mem.Write8(stkAddress+uint16(m.S), uint8(val>>8))
+	m.mem.Write8(stkAddress+uint16(m.S-1), uint8(val))
+	m.S -= 2
 }
 
 func (m *M6502) pop16() uint16 {
-	l := uint16(m.mem.Read8(stkAddress + uint16(m.s+1)))
-	h := uint16(m.mem.Read8(stkAddress + uint16(m.s+2)))
-	m.s += 2
+	l := uint16(m.mem.Read8(stkAddress + uint16(m.S+1)))
+	h := uint16(m.mem.Read8(stkAddress + uint16(m.S+2)))
+	m.S += 2
 	return (h << 8) | l
 }
 
@@ -105,42 +105,42 @@ func (m *M6502) readAbsoluteX() (uint8, uint) {
 // ADC add with carry
 
 func (m *M6502) opADC(v uint8) {
-	c := m.p & flagC
-	if m.p&flagD != 0 {
-		l := uint(m.a&0x0F) + uint(v&0x0F) + uint(c)
-		h := uint(m.a&0xF0) + uint(v&0xF0)
-		m.p &= ^(flagV | flagC | flagN | flagZ)
+	c := m.P & flagC
+	if m.P&flagD != 0 {
+		l := uint(m.A&0x0F) + uint(v&0x0F) + uint(c)
+		h := uint(m.A&0xF0) + uint(v&0xF0)
+		m.P &= ^(flagV | flagC | flagN | flagZ)
 		if (l+h)&0xFF == 0 {
-			m.p |= flagZ
+			m.P |= flagZ
 		}
 		if l > 0x09 {
 			h += 0x10
 			l += 0x06
 		}
 		if h&0x80 != 0 {
-			m.p |= flagN
+			m.P |= flagN
 		}
-		if ^(m.a^v)&(m.a^uint8(h))&0x80 != 0 {
-			m.p |= flagV
+		if ^(m.A^v)&(m.A^uint8(h))&0x80 != 0 {
+			m.P |= flagV
 		}
 		if h > 0x90 {
 			h += 0x60
 		}
 		if h>>8 != 0 {
-			m.p |= flagC
+			m.P |= flagC
 		}
-		m.a = uint8(l&0x0F) | uint8(h&0xF0)
+		m.A = uint8(l&0x0F) | uint8(h&0xF0)
 	} else {
-		t := uint(m.a) + uint(v) + uint(c)
-		m.p &= ^(flagV | flagC)
-		if ^(m.a^v)&(m.a^uint8(t))&0x80 != 0 {
-			m.p |= flagV
+		t := uint(m.A) + uint(v) + uint(c)
+		m.P &= ^(flagV | flagC)
+		if ^(m.A^v)&(m.A^uint8(t))&0x80 != 0 {
+			m.P |= flagV
 		}
 		if t>>8 != 0 {
-			m.p |= flagC
+			m.P |= flagC
 		}
-		m.a = uint8(t)
-		m.setNZ(m.a)
+		m.A = uint8(t)
+		m.setNZ(m.A)
 	}
 }
 
@@ -330,11 +330,11 @@ func opBPLrel(m *M6502) uint {
 
 // opBRKimpl, break / interrupt, implied mode
 func opBRKimpl(m *M6502) uint {
-	m.read8(m.pc + 1)
-	m.push16(m.pc + 2)
-	m.push8(m.p | flagB)
-	m.p |= flagB | flagI
-	m.pc = m.readPointer(brkAddress)
+	m.read8(m.PC + 1)
+	m.push16(m.PC + 2)
+	m.push8(m.P | flagB)
+	m.P |= flagB | flagI
+	m.PC = m.readPointer(brkAddress)
 	return 7
 }
 
@@ -585,20 +585,20 @@ func opINYimpl(m *M6502) uint {
 
 // opJMPabs, jump, absolute mode
 func opJMPabs(m *M6502) uint {
-	m.pc = m.read16(m.pc + 1)
+	m.PC = m.read16(m.PC + 1)
 	return 3
 }
 
 // opJMPind, jump, indirect mode
 func opJMPind(m *M6502) uint {
-	m.pc = m.read16(m.read16(m.pc + 1))
+	m.PC = m.read16(m.read16(m.PC + 1))
 	return 5
 }
 
 // opJSRabs, jump subroutine, absolute mode
 func opJSRabs(m *M6502) uint {
-	m.push16(m.pc + 2)
-	m.pc = m.read16(m.pc + 1)
+	m.push16(m.PC + 2)
+	m.PC = m.read16(m.PC + 1)
 	return 6
 }
 
@@ -886,7 +886,7 @@ func opRTIimpl(m *M6502) uint {
 
 // opRTSimpl, return from subroutine, implied mode
 func opRTSimpl(m *M6502) uint {
-	m.pc = m.pop16() + 1
+	m.PC = m.pop16() + 1
 	return 6
 }
 
@@ -1036,17 +1036,17 @@ func opSTYzx(m *M6502) uint {
 
 // opTAXimpl, transfer accumulator to X, implied mode
 func opTAXimpl(m *M6502) uint {
-	m.pc++
-	m.x = m.a
-	m.setNZ(m.x)
+	m.PC++
+	m.X = m.A
+	m.setNZ(m.X)
 	return 2
 }
 
 // opTAYimpl, transfer accumulator to Y, implied mode
 func opTAYimpl(m *M6502) uint {
-	m.pc++
-	m.y = m.a
-	m.setNZ(m.y)
+	m.PC++
+	m.Y = m.A
+	m.setNZ(m.Y)
 	return 2
 }
 
@@ -1058,9 +1058,9 @@ func opTSXimpl(m *M6502) uint {
 
 // opTXAimpl, transfer X to accumulator, implied mode
 func opTXAimpl(m *M6502) uint {
-	m.pc++
-	m.a = m.x
-	m.setNZ(m.a)
+	m.PC++
+	m.A = m.X
+	m.setNZ(m.A)
 	return 2
 }
 
@@ -1072,9 +1072,9 @@ func opTXSimpl(m *M6502) uint {
 
 // opTYAimpl, transfer Y to accumulator, implied mode
 func opTYAimpl(m *M6502) uint {
-	m.pc++
-	m.a = m.y
-	m.setNZ(m.a)
+	m.PC++
+	m.A = m.Y
+	m.setNZ(m.A)
 	return 2
 }
 
@@ -1113,21 +1113,21 @@ func New6502(mem Memory) *M6502 {
 // Power on/off the 6502 CPU.
 func (m *M6502) Power(state bool) {
 	if state {
-		m.pc = initialPC
-		m.s = initialS
-		m.p = initialP
-		m.a = initialA
-		m.x = initialX
-		m.y = initialY
+		m.PC = initialPC
+		m.S = initialS
+		m.P = initialP
+		m.A = initialA
+		m.X = initialX
+		m.Y = initialY
 		m.irq = false
 		m.nmi = false
 	} else {
-		m.pc = 0
-		m.s = 0
-		m.p = 0
-		m.a = 0
-		m.x = 0
-		m.y = 0
+		m.PC = 0
+		m.S = 0
+		m.P = 0
+		m.A = 0
+		m.X = 0
+		m.Y = 0
 		m.irq = false
 		m.nmi = false
 	}
@@ -1135,9 +1135,9 @@ func (m *M6502) Power(state bool) {
 
 // Reset the 6502 CPU.
 func (m *M6502) Reset() {
-	m.pc = m.readPointer(rstAddress)
-	m.s = initialS
-	m.p = initialP
+	m.PC = m.readPointer(rstAddress)
+	m.S = initialS
+	m.P = initialP
 	m.irq = false
 	m.nmi = false
 }
@@ -1162,27 +1162,27 @@ func (m *M6502) Run(cycles uint) uint {
 		// nmi handling
 		if m.nmi {
 			m.nmi = false                    // clear the nmi
-			m.p &= ^flagB                    // clear the break flag
-			m.push16(m.pc)                   // save return addres in the stack.
-			m.push8(m.p)                     // save current status in the stack.
-			m.pc = m.readPointer(nmiAddress) // make PC point to the NMI routine.
-			m.p |= flagI                     // disable interrupts
+			m.P &= ^flagB                    // clear the break flag
+			m.push16(m.PC)                   // save return addres in the stack.
+			m.push8(m.P)                     // save current status in the stack.
+			m.PC = m.readPointer(nmiAddress) // make PC point to the NMI routine.
+			m.P |= flagI                     // disable interrupts
 			clks += 7                        // accepting an NMI consumes 7 ticks.
 			continue
 		}
 
 		// irq handling
-		if m.irq && (m.p&flagI == 0) {
-			m.p &= ^flagB
-			m.push16(m.pc)
-			m.push8(m.p)
-			m.pc = m.readPointer(irqAddress)
-			m.p |= flagI
+		if m.irq && (m.P&flagI == 0) {
+			m.P &= ^flagB
+			m.push16(m.PC)
+			m.push8(m.P)
+			m.PC = m.readPointer(irqAddress)
+			m.P |= flagI
 			clks += 7
 			continue
 		}
 
-		opcode := m.read8(m.pc)
+		opcode := m.read8(m.PC)
 		clks += opcodeTable[opcode](m)
 	}
 

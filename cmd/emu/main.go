@@ -68,7 +68,6 @@ func (user *userApp) Put(s string) {
 //-----------------------------------------------------------------------------
 
 func main() {
-
 	c := cli.NewCLI(newUserApp())
 	c.HistoryLoad(historyPath)
 	c.SetRoot(menuRoot)
