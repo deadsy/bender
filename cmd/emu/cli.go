@@ -219,34 +219,24 @@ func daArgs(pc uint16, args []string) (uint16, uint, error) {
 var cmdDisassemble = cli.Leaf{
 	Descr: "disassemble memory",
 	F: func(c *cli.CLI, args []string) {
-
 		m := c.User.(*userApp).cpu
-
-		adr, size, err := daArgs(m.PC, args)
+		adr, size, err := daArgs(m.ReadPC(), args)
 		if err != nil {
 			c.User.Put(fmt.Sprintf("%s\n", err))
 			return
 		}
-
-		c.User.Put(fmt.Sprintf("%04x %d\n", adr, size))
-
-		//c.Exit()
+		c.User.Put(fmt.Sprintf("%s\n", m.Disassemble(adr, int(size))))
 	},
 }
 
 var cmdRegisters = cli.Leaf{
 	Descr: "display cpu registers",
 	F: func(c *cli.CLI, args []string) {
-
 		m := c.User.(*userApp).cpu
-
-		c.User.Put(fmt.Sprintf("PC %04x\n", m.PC))
-		c.User.Put(fmt.Sprintf("S %02x\n", m.S))
-		c.User.Put(fmt.Sprintf("P %02x\n", m.P))
-		c.User.Put(fmt.Sprintf("A %02x\n", m.A))
-		c.User.Put(fmt.Sprintf("X %02x\n", m.X))
-		c.User.Put(fmt.Sprintf("Y %02x\n", m.Y))
-
+		regs := m.ReadRegisters()
+		saved := c.User.(*userApp).savedRegs
+		c.User.Put(fmt.Sprintf("%s\n", regs.Dump(saved)))
+		c.User.(*userApp).savedRegs = regs
 	},
 }
 

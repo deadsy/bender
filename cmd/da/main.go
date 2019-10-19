@@ -16,7 +16,7 @@ import (
 
 //-----------------------------------------------------------------------------
 
-var symbol = map[uint16]string{
+var symtab = cpu.SymbolTable{
 	0x0000: "fmpnt",
 	0x0002: "topnt",
 	0x0004: "cntr",
@@ -175,7 +175,7 @@ var symbol = map[uint16]string{
 	0x07c5: "echo",
 }
 
-var code = []byte{
+var code = []uint8{
 	0xa9, 0x00, 0xa8, 0x91, 0x02, 0xc8, 0xca, 0xd0,
 	0xfa, 0x60, 0x18, 0x36, 0x00, 0x88, 0xd0, 0x01,
 	0x60, 0xe8, 0x4c, 0x0b, 0x02, 0x18, 0x76, 0x00,
@@ -345,24 +345,39 @@ var code = []byte{
 
 //-----------------------------------------------------------------------------
 
+type memory struct {
+	base uint16
+	mem  []uint8
+}
+
+func (m *memory) Read8(adr uint16) uint8 {
+	return m.mem[adr-m.base]
+}
+
+func (m *memory) Write8(adr uint16, val uint8) {
+	// nop
+}
+
+//-----------------------------------------------------------------------------
+
 func main() {
 
 	adr := uint16(0x200)
+	size := len(code)
 
-	cs := cpu.CodeSegment{
-		Base:   adr,
-		Memory: code,
-		Symbol: symbol,
+	m := &memory{
+		base: adr,
+		mem:  code,
 	}
 
-	for true {
-		da, err := cs.Disassemble(adr)
-		if err != nil {
-			break
-		}
-		fmt.Printf("%s\n", da)
-		adr += uint16(len(da.Bytes))
+	for size > 0 {
+		da := cpu.Disassemble(m, adr, symtab)
+		fmt.Printf("%s\n", da.String())
+		n := len(da.Bytes)
+		size -= n
+		adr += uint16(n)
 	}
+
 }
 
 //-----------------------------------------------------------------------------

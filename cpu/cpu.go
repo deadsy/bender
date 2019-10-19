@@ -3,10 +3,18 @@
 
 6502 CPU Definitions
 
+https://github.com/redcode/6502
+https://www.masswerk.at/6502/6502_instruction_set.html
+
 */
 //-----------------------------------------------------------------------------
 
 package cpu
+
+import (
+	"fmt"
+	"strings"
+)
 
 //-----------------------------------------------------------------------------
 
@@ -18,17 +26,22 @@ type Memory interface {
 
 //-----------------------------------------------------------------------------
 
+// Registers is the set of 6502 CPU registers.
+type Registers struct {
+	PC uint16 // program counter
+	S  uint8  // stack pointer
+	P  uint8  // processor status flags
+	A  uint8  // accumulator
+	X  uint8  // x index
+	Y  uint8  // y index
+}
+
 // M6502 is the state for the 6502 CPU.
 type M6502 struct {
-	PC  uint16 // program counter
-	S   uint8  // stack pointer
-	P   uint8  // processor status flags
-	A   uint8  // accumulator
-	X   uint8  // x index
-	Y   uint8  // y index
-	nmi bool   // nmi state
-	irq bool   // irq state
-	mem Memory // memory of the target system
+	reg Registers // registers
+	nmi bool      // nmi state
+	irq bool      // irq state
+	mem Memory    // memory of the target system
 }
 
 const nmiAddress = 0xFFFA // non maskable interrupt
@@ -102,7 +115,7 @@ var modeDescr = map[adrMode]adrModeInfo{
 	amZpgY: {"zy", "zeropage, Y-indexed"},
 }
 
-var insLengthByMode = []uint{
+var insLengthByMode = []int{
 	1,     // amNone
 	1,     // amAcc
 	1 + 2, // amAbs
@@ -119,7 +132,7 @@ var insLengthByMode = []uint{
 	1 + 1, // amZpgY
 }
 
-func insLength(code uint8) uint {
+func insLength(code uint8) int {
 	return insLengthByMode[opcodeLookup(code).mode]
 }
 
@@ -391,6 +404,53 @@ var insDescr = map[string]string{
 	"txa": "transfer X to accumulator",
 	"txs": "transfer X to stack pointer",
 	"tya": "transfer Y to accumulator",
+}
+
+//-----------------------------------------------------------------------------
+
+// dumpPC returns a display string for the program counter.
+func dumpPC(x, oldx uint16) string {
+	s := make([]string, 2)
+	s[0] = fmt.Sprintf("PC %04x", x)
+	if x != oldx {
+		s[1] = "*"
+	}
+	return strings.Join(s, " ")
+}
+
+// dumpP returns a display string for the processor status register.
+func dumpP(x, oldx uint8) string {
+	s := make([]string, 2)
+	s[0] = fmt.Sprintf("P  %02x", x)
+	if x != oldx {
+		s[1] = "*"
+	}
+	return strings.Join(s, " ")
+}
+
+// dump8 returns a display string for a generic 8 bit register.
+func dump8(name string, x, oldx uint8) string {
+	s := make([]string, 2)
+	s[0] = fmt.Sprintf("%s  %02x", name, x)
+	if x != oldx {
+		s[1] = "*"
+	}
+	return strings.Join(s, " ")
+}
+
+// Dump returns a display string for the CPU registers.
+func (r *Registers) Dump(x *Registers) string {
+	if x == nil {
+		x = r
+	}
+	s := make([]string, 6)
+	s[0] = dumpPC(r.PC, x.PC)
+	s[1] = dump8("S", r.S, x.S)
+	s[2] = dumpP(r.P, x.P)
+	s[3] = dump8("A", r.A, x.A)
+	s[4] = dump8("X", r.X, x.X)
+	s[5] = dump8("Y", r.Y, x.Y)
+	return strings.Join(s, "\n")
 }
 
 //-----------------------------------------------------------------------------

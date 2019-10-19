@@ -46,8 +46,9 @@ func newMemory() *memory {
 
 // userApp is state associated with the user application.
 type userApp struct {
-	mem *memory
-	cpu *cpu.M6502
+	mem       *memory
+	cpu       *cpu.M6502
+	savedRegs *cpu.Registers
 }
 
 // newUserApp returns a user application.

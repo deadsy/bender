@@ -1,12 +1,7 @@
 //-----------------------------------------------------------------------------
 /*
 
-6502 CPU Emulator
-
-See also:
-
-https://github.com/redcode/6502
-https://www.masswerk.at/6502/6502_instruction_set.html
+6502 CPU Disassembler
 
 */
 //-----------------------------------------------------------------------------
@@ -20,20 +15,15 @@ import (
 
 //-----------------------------------------------------------------------------
 
-// CodeSegment defines a contiguous area of memory.
-type CodeSegment struct {
-	Base   uint16            // base address
-	Memory []byte            // memory content
-	Symbol map[uint16]string // symbol table
-}
+type SymbolTable map[uint16]string
 
 // Disassembly returns the result of the disassembler call.
 type Disassembly struct {
-	Dump        string // address and memory bytes
-	Symbol      string // symbol for the address (if any)
-	Instruction string // instruction decode
-	Comment     string // useful comment
-	Bytes       []byte // the bytes of the instruction
+	Dump        string  // address and memory bytes
+	Symbol      string  // symbol for the address (if any)
+	Instruction string  // instruction decode
+	Comment     string  // useful comment
+	Bytes       []uint8 // decoded bytes
 }
 
 func (da *Disassembly) String() string {
@@ -47,33 +37,22 @@ func (da *Disassembly) String() string {
 
 //-----------------------------------------------------------------------------
 
-func (cs *CodeSegment) getMem(adr uint16, n uint) ([]byte, error) {
-	ofs := int(adr) - int(cs.Base)
-	if ofs < 0 || ofs >= len(cs.Memory) {
-		return nil, fmt.Errorf("address is out of segment")
-	}
-	if ofs+int(n) >= len(cs.Memory) {
-		return nil, fmt.Errorf("length is out of segment")
-	}
-	return cs.Memory[ofs : ofs+int(n)], nil
-}
-
-func (cs *CodeSegment) daDump(adr uint16, mem []byte) string {
+func daDump(adr uint16, mem []byte) string {
 	s := make([]string, len(mem))
 	for i, v := range mem {
 		s[i] = fmt.Sprintf("%02x", v)
 	}
-	return fmt.Sprintf("%04x: %s", uint16(adr), strings.Join(s, " "))
+	return fmt.Sprintf("%04x: %s", adr, strings.Join(s, " "))
 }
 
-func (cs *CodeSegment) daSymbol(adr uint16) string {
-	if cs.Symbol != nil {
-		return cs.Symbol[adr]
+func daSymbol(adr uint16, st SymbolTable) string {
+	if st != nil {
+		return st[adr]
 	}
 	return ""
 }
 
-func (cs *CodeSegment) daInstruction(adr uint16, mem []byte) (string, string) {
+func daInstruction(adr uint16, mem []uint8) (string, string) {
 
 	var s []string
 	var comment string
@@ -134,29 +113,38 @@ func (cs *CodeSegment) daInstruction(adr uint16, mem []byte) (string, string) {
 	return strings.Join(s, " "), comment
 }
 
-// Disassemble a 6502 instruction from the code segment at the address.
-func (cs *CodeSegment) Disassemble(adr uint16) (*Disassembly, error) {
-
-	// get the instruction memory
-	mem, err := cs.getMem(adr, 1)
-	if err != nil {
-		return nil, err
-	}
-	mem, err = cs.getMem(adr, insLength(mem[0]))
-	if err != nil {
-		return nil, err
+// Disassemble a 6502 instruction from the memory at the address.
+func Disassemble(m Memory, adr uint16, st SymbolTable) *Disassembly {
+	// get the instruction bytes
+	mem := make([]uint8, insLength(m.Read8(adr)))
+	for i := range mem {
+		mem[i] = m.Read8(adr + uint16(i))
 	}
 
-	instruction, comment := cs.daInstruction(adr, mem)
+	instruction, comment := daInstruction(adr, mem)
 
 	return &Disassembly{
-		Dump:        cs.daDump(adr, mem),
-		Symbol:      cs.daSymbol(adr),
+		Dump:        daDump(adr, mem),
+		Symbol:      daSymbol(adr, st),
 		Instruction: instruction,
 		Comment:     comment,
 		Bytes:       mem,
-	}, nil
+	}
+}
 
+//-----------------------------------------------------------------------------
+
+// Disassemble returns the disassembly for a region of the CPU memory.
+func (m *M6502) Disassemble(adr uint16, size int) string {
+	s := make([]string, 0, 16)
+	for size > 0 {
+		da := Disassemble(m.mem, adr, nil)
+		s = append(s, da.String())
+		n := len(da.Bytes)
+		size -= n
+		adr += uint16(n)
+	}
+	return strings.Join(s, "\n")
 }
 
 //-----------------------------------------------------------------------------
