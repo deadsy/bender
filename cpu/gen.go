@@ -20,7 +20,7 @@ import (
 func opcodeFuncName(code uint8) string {
 	x := opcodeLookup(code)
 	ins := strings.ToUpper(x.ins)
-	return fmt.Sprintf("op%s%s", ins, modeDescr[x.mode].suffix)
+	return fmt.Sprintf("op%s", ins)
 }
 
 // generate the opcode function comment
@@ -28,8 +28,7 @@ func opcodeFuncComment(code uint8) string {
 	x := opcodeLookup(code)
 	name := opcodeFuncName(code)
 	descr := insDescr[x.ins]
-	mode := modeDescr[x.mode].descr
-	return fmt.Sprintf("// %s, %s, %s mode", name, descr, mode)
+	return fmt.Sprintf("// %s, %s", name, descr)
 }
 
 // generate the opcode function template
@@ -37,7 +36,7 @@ func genOpcodeFunction(code uint8) string {
 	name := opcodeFuncName(code)
 	s := make([]string, 5)
 	s[0] = opcodeFuncComment(code)
-	s[1] = fmt.Sprintf("func %s(m *M6502) uint {", name)
+	s[1] = fmt.Sprintf("func %s(m *M6502, op uint8) uint {", name)
 	s[2] = fmt.Sprintf("emuTODO()")
 	s[3] = fmt.Sprintf("return %d", 0)
 	s[4] = "}"
@@ -102,7 +101,7 @@ func genOpcodeTable() string {
 func GenOpcodeFunctions() string {
 	s := make([]string, 3)
 	s[0] = genOpcodeFunctions()
-	s[1] = "type opFunc func(m *M6502) uint"
+	s[1] = "type opFunc func(m *M6502, op uint8) uint"
 	s[2] = genOpcodeTable()
 	return strings.Join(s, "\n\n")
 

@@ -61,6 +61,9 @@ func daInstruction(adr uint16, mem []uint8) (string, string) {
 	info := opcodeLookup(mem[0])
 
 	// instruction mneumonic
+	if info.ins == "ill" {
+		info.ins = "?"
+	}
 	s = append(s, info.ins)
 
 	switch info.mode {

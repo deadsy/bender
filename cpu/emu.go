@@ -102,9 +102,13 @@ func (m *M6502) readAbsoluteX() (uint8, uint) {
 }
 
 //-----------------------------------------------------------------------------
-// ADC add with carry
 
-func (m *M6502) opADC(v uint8) {
+// opADC, add with carry
+func opADC(m *M6502, op uint8) uint {
+
+	v := uint8(0) // TODO
+	n := uint(3)  // TODO
+
 	c := m.reg.P & flagC
 	if m.reg.P&flagD != 0 {
 		l := uint(m.reg.A&0x0F) + uint(v&0x0F) + uint(c)
@@ -142,194 +146,66 @@ func (m *M6502) opADC(v uint8) {
 		m.reg.A = uint8(t)
 		m.setNZ(m.reg.A)
 	}
-}
 
-// opADCabs, add with carry, absolute mode
-func opADCabs(m *M6502) uint {
-	v, n := m.readAbsolute()
-	m.opADC(v)
 	return n
 }
 
-// opADCabsx, add with carry, absolute, X-indexed mode
-func opADCabsx(m *M6502) uint {
-	v, n := m.readAbsoluteX()
-	m.opADC(v)
-	return n
-}
-
-// opADCabsy, add with carry, absolute, Y-indexed mode
-func opADCabsy(m *M6502) uint {
-	v, n := m.readAbsoluteY()
-	m.opADC(v)
-	return n
-}
-
-// opADCimm, add with carry, immediate mode
-func opADCimm(m *M6502) uint {
-	v, n := m.readImmediate()
-	m.opADC(v)
-	return n
-}
-
-// opADCindy, add with carry, indirect, Y-indexed mode
-func opADCindy(m *M6502) uint {
-	v, n := m.readIndirectY()
-	m.opADC(v)
-	return n
-}
-
-// opADCxind, add with carry, X-indexed, indirect mode
-func opADCxind(m *M6502) uint {
-	v, n := m.readIndirectX()
-	m.opADC(v)
-	return n
-}
-
-// opADCz, add with carry, zeropage mode
-func opADCz(m *M6502) uint {
-	v, n := m.readZeroPage()
-	m.opADC(v)
-	return n
-}
-
-// opADCzx, add with carry, zeropage, X-indexed mode
-func opADCzx(m *M6502) uint {
-	v, n := m.readZeroPageX()
-	m.opADC(v)
-	return n
-}
-
-//-----------------------------------------------------------------------------
-
-// opANDabs, and (with accumulator), absolute mode
-func opANDabs(m *M6502) uint {
+// opAND, and (with accumulator)
+func opAND(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opANDabsx, and (with accumulator), absolute, X-indexed mode
-func opANDabsx(m *M6502) uint {
+// opASL, arithmetic shift left
+func opASL(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opANDabsy, and (with accumulator), absolute, Y-indexed mode
-func opANDabsy(m *M6502) uint {
+// opBCC, branch on carry clear
+func opBCC(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opANDimm, and (with accumulator), immediate mode
-func opANDimm(m *M6502) uint {
+// opBCS, branch on carry set
+func opBCS(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opANDindy, and (with accumulator), indirect, Y-indexed mode
-func opANDindy(m *M6502) uint {
+// opBEQ, branch on equal (zero set)
+func opBEQ(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opANDxind, and (with accumulator), X-indexed, indirect mode
-func opANDxind(m *M6502) uint {
+// opBIT, bit test
+func opBIT(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opANDz, and (with accumulator), zeropage mode
-func opANDz(m *M6502) uint {
+// opBMI, branch on minus (negative set)
+func opBMI(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opANDzx, and (with accumulator), zeropage, X-indexed mode
-func opANDzx(m *M6502) uint {
+// opBNE, branch on not equal (zero clear)
+func opBNE(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opASLabs, arithmetic shift left, absolute mode
-func opASLabs(m *M6502) uint {
+// opBPL, branch on plus (negative clear)
+func opBPL(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opASLabsx, arithmetic shift left, absolute, X-indexed mode
-func opASLabsx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opASLacc, arithmetic shift left, accumulator mode
-func opASLacc(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opASLz, arithmetic shift left, zeropage mode
-func opASLz(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opASLzx, arithmetic shift left, zeropage, X-indexed mode
-func opASLzx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opBCCrel, branch on carry clear, relative mode
-func opBCCrel(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opBCSrel, branch on carry set, relative mode
-func opBCSrel(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opBEQimm, branch on equal (zero set), immediate mode
-func opBEQimm(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opBITabs, bit test, absolute mode
-func opBITabs(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opBITz, bit test, zeropage mode
-func opBITz(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opBMIrel, branch on minus (negative set), relative mode
-func opBMIrel(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opBNErel, branch on not equal (zero clear), relative mode
-func opBNErel(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opBPLrel, branch on plus (negative clear), relative mode
-func opBPLrel(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opBRKimpl, break / interrupt, implied mode
-func opBRKimpl(m *M6502) uint {
+// opBRK, break / interrupt
+func opBRK(m *M6502, op uint8) uint {
 	m.read8(m.reg.PC + 1)
 	m.push16(m.reg.PC + 2)
 	m.push8(m.reg.P | flagB)
@@ -338,765 +214,316 @@ func opBRKimpl(m *M6502) uint {
 	return 7
 }
 
-// opBVCrel, branch on overflow clear, relative mode
-func opBVCrel(m *M6502) uint {
+// opBVC, branch on overflow clear
+func opBVC(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opBVSrel, branch on overflow set, relative mode
-func opBVSrel(m *M6502) uint {
+// opBVS, branch on overflow set
+func opBVS(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opCLCimpl, clear carry, implied mode
-func opCLCimpl(m *M6502) uint {
+// opCLC, clear carry
+func opCLC(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opCLDimpl, clear decimal, implied mode
-func opCLDimpl(m *M6502) uint {
+// opCLD, clear decimal
+func opCLD(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opCLIimpl, clear interrupt disable, implied mode
-func opCLIimpl(m *M6502) uint {
+// opCLI, clear interrupt disable
+func opCLI(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opCLVimpl, clear overflow, implied mode
-func opCLVimpl(m *M6502) uint {
+// opCLV, clear overflow
+func opCLV(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opCMPabs, compare (with accumulator), absolute mode
-func opCMPabs(m *M6502) uint {
+// opCMP, compare (with accumulator)
+func opCMP(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opCMPabsx, compare (with accumulator), absolute, X-indexed mode
-func opCMPabsx(m *M6502) uint {
+// opCPX, compare with X
+func opCPX(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opCMPabsy, compare (with accumulator), absolute, Y-indexed mode
-func opCMPabsy(m *M6502) uint {
+// opCPY, compare with Y
+func opCPY(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opCMPimm, compare (with accumulator), immediate mode
-func opCMPimm(m *M6502) uint {
+// opDEC, decrement
+func opDEC(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opCMPindy, compare (with accumulator), indirect, Y-indexed mode
-func opCMPindy(m *M6502) uint {
+// opDEX, decrement X
+func opDEX(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opCMPxind, compare (with accumulator), X-indexed, indirect mode
-func opCMPxind(m *M6502) uint {
+// opDEY, decrement Y
+func opDEY(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opCMPz, compare (with accumulator), zeropage mode
-func opCMPz(m *M6502) uint {
+// opEOR, exclusive or (with accumulator)
+func opEOR(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opCMPzx, compare (with accumulator), zeropage, X-indexed mode
-func opCMPzx(m *M6502) uint {
+// opILL,
+func opILL(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opCPXabs, compare with X, absolute mode
-func opCPXabs(m *M6502) uint {
+// opINC, increment
+func opINC(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opCPXimm, compare with X, immediate mode
-func opCPXimm(m *M6502) uint {
+// opINX, increment X
+func opINX(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opCPXz, compare with X, zeropage mode
-func opCPXz(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opCPYabs, compare with Y, absolute mode
-func opCPYabs(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opCPYimm, compare with Y, immediate mode
-func opCPYimm(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opCPYz, compare with Y, zeropage mode
-func opCPYz(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opDECabs, decrement, absolute mode
-func opDECabs(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opDECabsx, decrement, absolute, X-indexed mode
-func opDECabsx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opDECz, decrement, zeropage mode
-func opDECz(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opDECzx, decrement, zeropage, X-indexed mode
-func opDECzx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opDEXimpl, decrement X, implied mode
-func opDEXimpl(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opDEYimpl, decrement Y, implied mode
-func opDEYimpl(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opEORabs, exclusive or (with accumulator), absolute mode
-func opEORabs(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opEORabsx, exclusive or (with accumulator), absolute, X-indexed mode
-func opEORabsx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opEORabsy, exclusive or (with accumulator), absolute, Y-indexed mode
-func opEORabsy(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opEORimm, exclusive or (with accumulator), immediate mode
-func opEORimm(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opEORindy, exclusive or (with accumulator), indirect, Y-indexed mode
-func opEORindy(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opEORxind, exclusive or (with accumulator), X-indexed, indirect mode
-func opEORxind(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opEORz, exclusive or (with accumulator), zeropage mode
-func opEORz(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opEORzx, exclusive or (with accumulator), zeropage, X-indexed mode
-func opEORzx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opILL, illegal instruction
-func opILL(m *M6502) uint {
-	return 2
-}
-
-// opINCabs, increment, absolute mode
-func opINCabs(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opINCabsx, increment, absolute, X-indexed mode
-func opINCabsx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opINCz, increment, zeropage mode
-func opINCz(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opINCzx, increment, zeropage, X-indexed mode
-func opINCzx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opINXimpl, increment X, implied mode
-func opINXimpl(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opINYimpl, increment Y, implied mode
-func opINYimpl(m *M6502) uint {
+// opINY, increment Y
+func opINY(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
 // opJMPabs, jump, absolute mode
-func opJMPabs(m *M6502) uint {
+func opJMPabs(m *M6502, op uint8) uint {
 	m.reg.PC = m.read16(m.reg.PC + 1)
 	return 3
 }
 
 // opJMPind, jump, indirect mode
-func opJMPind(m *M6502) uint {
+func opJMPind(m *M6502, op uint8) uint {
 	m.reg.PC = m.read16(m.read16(m.reg.PC + 1))
 	return 5
 }
 
-// opJSRabs, jump subroutine, absolute mode
-func opJSRabs(m *M6502) uint {
+// opJSR, jump subroutine
+func opJSR(m *M6502, op uint8) uint {
 	m.push16(m.reg.PC + 2)
 	m.reg.PC = m.read16(m.reg.PC + 1)
 	return 6
 }
 
-// opLDAabs, load accumulator, absolute mode
-func opLDAabs(m *M6502) uint {
+// opLDA, load accumulator
+func opLDA(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opLDAabsx, load accumulator, absolute, X-indexed mode
-func opLDAabsx(m *M6502) uint {
+// opLDX, load X
+func opLDX(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opLDAabsy, load accumulator, absolute, Y-indexed mode
-func opLDAabsy(m *M6502) uint {
+// opLDY, load Y
+func opLDY(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opLDAimm, load accumulator, immediate mode
-func opLDAimm(m *M6502) uint {
+// opLSR, logical shift right
+func opLSR(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opLDAindy, load accumulator, indirect, Y-indexed mode
-func opLDAindy(m *M6502) uint {
+// opNOP, no operation
+func opNOP(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opLDAxind, load accumulator, X-indexed, indirect mode
-func opLDAxind(m *M6502) uint {
+// opORA, or with accumulator
+func opORA(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opLDAz, load accumulator, zeropage mode
-func opLDAz(m *M6502) uint {
+// opPHA, push accumulator
+func opPHA(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opLDAzx, load accumulator, zeropage, X-indexed mode
-func opLDAzx(m *M6502) uint {
+// opPHP, push processor status (SR)
+func opPHP(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opLDXabs, load X, absolute mode
-func opLDXabs(m *M6502) uint {
+// opPLA, pull accumulator
+func opPLA(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opLDXabsy, load X, absolute, Y-indexed mode
-func opLDXabsy(m *M6502) uint {
+// opPLP, pull processor status (SR)
+func opPLP(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opLDXimm, load X, immediate mode
-func opLDXimm(m *M6502) uint {
+// opROL, rotate left
+func opROL(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opLDXz, load X, zeropage mode
-func opLDXz(m *M6502) uint {
+// opROR, rotate right
+func opROR(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opLDXzy, load X, zeropage, Y-indexed mode
-func opLDXzy(m *M6502) uint {
+// opRTI, return from interrupt
+func opRTI(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opLDYabs, load Y, absolute mode
-func opLDYabs(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opLDYabsx, load Y, absolute, X-indexed mode
-func opLDYabsx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opLDYimm, load Y, immediate mode
-func opLDYimm(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opLDYz, load Y, zeropage mode
-func opLDYz(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opLDYzx, load Y, zeropage, X-indexed mode
-func opLDYzx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opLSRabs, logical shift right, absolute mode
-func opLSRabs(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opLSRabsx, logical shift right, absolute, X-indexed mode
-func opLSRabsx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opLSRacc, logical shift right, accumulator mode
-func opLSRacc(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opLSRz, logical shift right, zeropage mode
-func opLSRz(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opLSRzx, logical shift right, zeropage, X-indexed mode
-func opLSRzx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opNOPimpl, no operation, implied mode
-func opNOPimpl(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opORAabs, or with accumulator, absolute mode
-func opORAabs(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opORAabsx, or with accumulator, absolute, X-indexed mode
-func opORAabsx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opORAabsy, or with accumulator, absolute, Y-indexed mode
-func opORAabsy(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opORAimm, or with accumulator, immediate mode
-func opORAimm(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opORAindy, or with accumulator, indirect, Y-indexed mode
-func opORAindy(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opORAxind, or with accumulator, X-indexed, indirect mode
-func opORAxind(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opORAz, or with accumulator, zeropage mode
-func opORAz(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opORAzx, or with accumulator, zeropage, X-indexed mode
-func opORAzx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opPHAimpl, push accumulator, implied mode
-func opPHAimpl(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opPHPimpl, push processor status (SR), implied mode
-func opPHPimpl(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opPLAimpl, pull accumulator, implied mode
-func opPLAimpl(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opPLPimpl, pull processor status (SR), implied mode
-func opPLPimpl(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opROLabs, rotate left, absolute mode
-func opROLabs(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opROLabsx, rotate left, absolute, X-indexed mode
-func opROLabsx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opROLacc, rotate left, accumulator mode
-func opROLacc(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opROLz, rotate left, zeropage mode
-func opROLz(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opROLzx, rotate left, zeropage, X-indexed mode
-func opROLzx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opRORabs, rotate right, absolute mode
-func opRORabs(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opRORabsx, rotate right, absolute, X-indexed mode
-func opRORabsx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opRORacc, rotate right, accumulator mode
-func opRORacc(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opRORz, rotate right, zeropage mode
-func opRORz(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opRORzx, rotate right, zeropage, X-indexed mode
-func opRORzx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opRTIimpl, return from interrupt, implied mode
-func opRTIimpl(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opRTSimpl, return from subroutine, implied mode
-func opRTSimpl(m *M6502) uint {
+// opRTS, return from subroutine
+func opRTS(m *M6502, op uint8) uint {
 	m.reg.PC = m.pop16() + 1
 	return 6
 }
 
-// opSBCabs, subtract with carry, absolute mode
-func opSBCabs(m *M6502) uint {
+// opSBC, subtract with carry
+func opSBC(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opSBCabsx, subtract with carry, absolute, X-indexed mode
-func opSBCabsx(m *M6502) uint {
+// opSEC, set carry
+func opSEC(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opSBCabsy, subtract with carry, absolute, Y-indexed mode
-func opSBCabsy(m *M6502) uint {
+// opSED, set decimal
+func opSED(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opSBCimm, subtract with carry, immediate mode
-func opSBCimm(m *M6502) uint {
+// opSEI, set interrupt disable
+func opSEI(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opSBCindy, subtract with carry, indirect, Y-indexed mode
-func opSBCindy(m *M6502) uint {
+// opSTA, store accumulator
+func opSTA(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opSBCxind, subtract with carry, X-indexed, indirect mode
-func opSBCxind(m *M6502) uint {
+// opSTX, store X
+func opSTX(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opSBCz, subtract with carry, zeropage mode
-func opSBCz(m *M6502) uint {
+// opSTY, store Y
+func opSTY(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opSBCzx, subtract with carry, zeropage, X-indexed mode
-func opSBCzx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opSECimpl, set carry, implied mode
-func opSECimpl(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opSEDimpl, set decimal, implied mode
-func opSEDimpl(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opSEIimpl, set interrupt disable, implied mode
-func opSEIimpl(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opSTAabs, store accumulator, absolute mode
-func opSTAabs(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opSTAabsx, store accumulator, absolute, X-indexed mode
-func opSTAabsx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opSTAabsy, store accumulator, absolute, Y-indexed mode
-func opSTAabsy(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opSTAindy, store accumulator, indirect, Y-indexed mode
-func opSTAindy(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opSTAxind, store accumulator, X-indexed, indirect mode
-func opSTAxind(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opSTAz, store accumulator, zeropage mode
-func opSTAz(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opSTAzx, store accumulator, zeropage, X-indexed mode
-func opSTAzx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opSTXabs, store X, absolute mode
-func opSTXabs(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opSTXz, store X, zeropage mode
-func opSTXz(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opSTXzy, store X, zeropage, Y-indexed mode
-func opSTXzy(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opSTYabs, store Y, absolute mode
-func opSTYabs(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opSTYz, store Y, zeropage mode
-func opSTYz(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opSTYzx, store Y, zeropage, X-indexed mode
-func opSTYzx(m *M6502) uint {
-	emuTODO()
-	return 0
-}
-
-// opTAXimpl, transfer accumulator to X, implied mode
-func opTAXimpl(m *M6502) uint {
+// opTAX, transfer accumulator to X
+func opTAX(m *M6502, op uint8) uint {
 	m.reg.PC++
 	m.reg.X = m.reg.A
 	m.setNZ(m.reg.X)
 	return 2
 }
 
-// opTAYimpl, transfer accumulator to Y, implied mode
-func opTAYimpl(m *M6502) uint {
+// opTAY, transfer accumulator to Y
+func opTAY(m *M6502, op uint8) uint {
 	m.reg.PC++
 	m.reg.Y = m.reg.A
 	m.setNZ(m.reg.Y)
 	return 2
 }
 
-// opTSXimpl, transfer stack pointer to X, implied mode
-func opTSXimpl(m *M6502) uint {
+// opTSX, transfer stack pointer to X
+func opTSX(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opTXAimpl, transfer X to accumulator, implied mode
-func opTXAimpl(m *M6502) uint {
+// opTXA, transfer X to accumulator
+func opTXA(m *M6502, op uint8) uint {
 	m.reg.PC++
 	m.reg.A = m.reg.X
 	m.setNZ(m.reg.A)
 	return 2
 }
 
-// opTXSimpl, transfer X to stack pointer, implied mode
-func opTXSimpl(m *M6502) uint {
+// opTXS, transfer X to stack pointer
+func opTXS(m *M6502, op uint8) uint {
 	emuTODO()
 	return 0
 }
 
-// opTYAimpl, transfer Y to accumulator, implied mode
-func opTYAimpl(m *M6502) uint {
+// opTYA, transfer Y to accumulator
+func opTYA(m *M6502, op uint8) uint {
 	m.reg.PC++
 	m.reg.A = m.reg.Y
 	m.setNZ(m.reg.A)
 	return 2
 }
 
-type opFunc func(m *M6502) uint
+type opFunc func(m *M6502, op uint8) uint
 
 var opcodeTable = [256]opFunc{
-	opBRKimpl, opORAxind, opILL, opILL, opILL, opORAz, opASLz, opILL, opPHPimpl, opORAimm, opASLacc, opILL, opILL, opORAabs, opASLabs, opILL,
-	opBPLrel, opORAindy, opILL, opILL, opILL, opORAzx, opASLzx, opILL, opCLCimpl, opORAabsy, opILL, opILL, opILL, opORAabsx, opASLabsx, opILL,
-	opJSRabs, opANDxind, opILL, opILL, opBITz, opANDz, opROLz, opILL, opPLPimpl, opANDimm, opROLacc, opILL, opBITabs, opANDabs, opROLabs, opILL,
-	opBMIrel, opANDindy, opILL, opILL, opILL, opANDzx, opROLzx, opILL, opSECimpl, opANDabsy, opILL, opILL, opILL, opANDabsx, opROLabsx, opILL,
-	opRTIimpl, opEORxind, opILL, opILL, opILL, opEORz, opLSRz, opILL, opPHAimpl, opEORimm, opLSRacc, opILL, opJMPabs, opEORabs, opLSRabs, opILL,
-	opBVCrel, opEORindy, opILL, opILL, opILL, opEORzx, opLSRzx, opILL, opCLIimpl, opEORabsy, opILL, opILL, opILL, opEORabsx, opLSRabsx, opILL,
-	opRTSimpl, opADCxind, opILL, opILL, opILL, opADCz, opRORz, opILL, opPLAimpl, opADCimm, opRORacc, opILL, opJMPind, opADCabs, opRORabs, opILL,
-	opBVSrel, opADCindy, opILL, opILL, opILL, opADCzx, opRORzx, opILL, opSEIimpl, opADCabsy, opILL, opILL, opILL, opADCabsx, opRORabsx, opILL,
-	opILL, opSTAxind, opILL, opILL, opSTYz, opSTAz, opSTXz, opILL, opDEYimpl, opILL, opTXAimpl, opILL, opSTYabs, opSTAabs, opSTXabs, opILL,
-	opBCCrel, opSTAindy, opILL, opILL, opSTYzx, opSTAzx, opSTXzy, opILL, opTYAimpl, opSTAabsy, opTXSimpl, opILL, opILL, opSTAabsx, opILL, opILL,
-	opLDYimm, opLDAxind, opLDXimm, opILL, opLDYz, opLDAz, opLDXz, opILL, opTAYimpl, opLDAimm, opTAXimpl, opILL, opLDYabs, opLDAabs, opLDXabs, opILL,
-	opBCSrel, opLDAindy, opILL, opILL, opLDYzx, opLDAzx, opLDXzy, opILL, opCLVimpl, opLDAabsy, opTSXimpl, opILL, opLDYabsx, opLDAabsx, opLDXabsy, opILL,
-	opCPYimm, opCMPxind, opILL, opILL, opCPYz, opCMPz, opDECz, opILL, opINYimpl, opCMPimm, opDEXimpl, opILL, opCPYabs, opCMPabs, opDECabs, opILL,
-	opBNErel, opCMPindy, opILL, opILL, opILL, opCMPzx, opDECzx, opILL, opCLDimpl, opCMPabsy, opILL, opILL, opILL, opCMPabsx, opDECabsx, opILL,
-	opCPXimm, opSBCxind, opILL, opILL, opCPXz, opSBCz, opINCz, opILL, opINXimpl, opSBCimm, opNOPimpl, opILL, opCPXabs, opSBCabs, opINCabs, opILL,
-	opBEQimm, opSBCindy, opILL, opILL, opILL, opSBCzx, opINCzx, opILL, opSEDimpl, opSBCabsy, opILL, opILL, opILL, opSBCabsx, opINCabsx, opILL,
+	opBRK, opORA, opILL, opILL, opILL, opORA, opASL, opILL, opPHP, opORA, opASL, opILL, opILL, opORA, opASL, opILL,
+	opBPL, opORA, opILL, opILL, opILL, opORA, opASL, opILL, opCLC, opORA, opILL, opILL, opILL, opORA, opASL, opILL,
+	opJSR, opAND, opILL, opILL, opBIT, opAND, opROL, opILL, opPLP, opAND, opROL, opILL, opBIT, opAND, opROL, opILL,
+	opBMI, opAND, opILL, opILL, opILL, opAND, opROL, opILL, opSEC, opAND, opILL, opILL, opILL, opAND, opROL, opILL,
+	opRTI, opEOR, opILL, opILL, opILL, opEOR, opLSR, opILL, opPHA, opEOR, opLSR, opILL, opJMPabs, opEOR, opLSR, opILL,
+	opBVC, opEOR, opILL, opILL, opILL, opEOR, opLSR, opILL, opCLI, opEOR, opILL, opILL, opILL, opEOR, opLSR, opILL,
+	opRTS, opADC, opILL, opILL, opILL, opADC, opROR, opILL, opPLA, opADC, opROR, opILL, opJMPind, opADC, opROR, opILL,
+	opBVS, opADC, opILL, opILL, opILL, opADC, opROR, opILL, opSEI, opADC, opILL, opILL, opILL, opADC, opROR, opILL,
+	opILL, opSTA, opILL, opILL, opSTY, opSTA, opSTX, opILL, opDEY, opILL, opTXA, opILL, opSTY, opSTA, opSTX, opILL,
+	opBCC, opSTA, opILL, opILL, opSTY, opSTA, opSTX, opILL, opTYA, opSTA, opTXS, opILL, opILL, opSTA, opILL, opILL,
+	opLDY, opLDA, opLDX, opILL, opLDY, opLDA, opLDX, opILL, opTAY, opLDA, opTAX, opILL, opLDY, opLDA, opLDX, opILL,
+	opBCS, opLDA, opILL, opILL, opLDY, opLDA, opLDX, opILL, opCLV, opLDA, opTSX, opILL, opLDY, opLDA, opLDX, opILL,
+	opCPY, opCMP, opILL, opILL, opCPY, opCMP, opDEC, opILL, opINY, opCMP, opDEX, opILL, opCPY, opCMP, opDEC, opILL,
+	opBNE, opCMP, opILL, opILL, opILL, opCMP, opDEC, opILL, opCLD, opCMP, opILL, opILL, opILL, opCMP, opDEC, opILL,
+	opCPX, opSBC, opILL, opILL, opCPX, opSBC, opINC, opILL, opINX, opSBC, opNOP, opILL, opCPX, opSBC, opINC, opILL,
+	opBEQ, opSBC, opILL, opILL, opILL, opSBC, opINC, opILL, opSED, opSBC, opILL, opILL, opILL, opSBC, opINC, opILL,
 }
 
 //-----------------------------------------------------------------------------
@@ -1182,8 +609,8 @@ func (m *M6502) Run(cycles uint) uint {
 			continue
 		}
 
-		opcode := m.read8(m.reg.PC)
-		clks += opcodeTable[opcode](m)
+		op := m.read8(m.reg.PC)
+		clks += opcodeTable[op](m, op)
 	}
 
 	return clks
