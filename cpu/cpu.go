@@ -156,7 +156,7 @@ var opcodeInfo = map[uint8]insInfo{
 	0x50: insInfo{"bvc", amRel},
 	0x60: insInfo{"rts", amImpl},
 	0x70: insInfo{"bvs", amRel},
-	0x80: insInfo{"ill", amNone},
+	0x80: insInfo{"?", amNone},
 	0x90: insInfo{"bcc", amRel},
 	0xa0: insInfo{"ldy", amImm},
 	0xb0: insInfo{"bcs", amRel},
@@ -184,22 +184,22 @@ var opcodeInfo = map[uint8]insInfo{
 
 	0xa2: insInfo{"ldx", amImm},
 
-	0x04: insInfo{"ill", amNone},
-	0x14: insInfo{"ill", amNone},
+	0x04: insInfo{"?", amNone},
+	0x14: insInfo{"?", amNone},
 	0x24: insInfo{"bit", amZpg},
-	0x34: insInfo{"ill", amNone},
-	0x44: insInfo{"ill", amNone},
-	0x54: insInfo{"ill", amNone},
-	0x64: insInfo{"ill", amNone},
-	0x74: insInfo{"ill", amNone},
+	0x34: insInfo{"?", amNone},
+	0x44: insInfo{"?", amNone},
+	0x54: insInfo{"?", amNone},
+	0x64: insInfo{"?", amNone},
+	0x74: insInfo{"?", amNone},
 	0x84: insInfo{"sty", amZpg},
 	0x94: insInfo{"sty", amZpgX},
 	0xa4: insInfo{"ldy", amZpg},
 	0xb4: insInfo{"ldy", amZpgX},
 	0xc4: insInfo{"cpy", amZpg},
-	0xd4: insInfo{"ill", amNone},
+	0xd4: insInfo{"?", amNone},
 	0xe4: insInfo{"cpx", amZpg},
-	0xf4: insInfo{"ill", amNone},
+	0xf4: insInfo{"?", amNone},
 
 	0x05: insInfo{"ora", amZpg},
 	0x15: insInfo{"ora", amZpgX},
@@ -260,7 +260,7 @@ var opcodeInfo = map[uint8]insInfo{
 	0x59: insInfo{"eor", amAbsY},
 	0x69: insInfo{"adc", amImm},
 	0x79: insInfo{"adc", amAbsY},
-	0x89: insInfo{"ill", amNone},
+	0x89: insInfo{"?", amNone},
 	0x99: insInfo{"sta", amAbsY},
 	0xa9: insInfo{"lda", amImm},
 	0xb9: insInfo{"lda", amAbsY},
@@ -270,38 +270,38 @@ var opcodeInfo = map[uint8]insInfo{
 	0xf9: insInfo{"sbc", amAbsY},
 
 	0x0a: insInfo{"asl", amAcc},
-	0x1a: insInfo{"ill", amNone},
+	0x1a: insInfo{"?", amNone},
 	0x2a: insInfo{"rol", amAcc},
-	0x3a: insInfo{"ill", amNone},
+	0x3a: insInfo{"?", amNone},
 	0x4a: insInfo{"lsr", amAcc},
-	0x5a: insInfo{"ill", amNone},
+	0x5a: insInfo{"?", amNone},
 	0x6a: insInfo{"ror", amAcc},
-	0x7a: insInfo{"ill", amNone},
+	0x7a: insInfo{"?", amNone},
 	0x8a: insInfo{"txa", amImpl},
 	0x9a: insInfo{"txs", amImpl},
 	0xaa: insInfo{"tax", amImpl},
 	0xba: insInfo{"tsx", amImpl},
 	0xca: insInfo{"dex", amImpl},
-	0xda: insInfo{"ill", amNone},
+	0xda: insInfo{"?", amNone},
 	0xea: insInfo{"nop", amImpl},
-	0xfa: insInfo{"ill", amNone},
+	0xfa: insInfo{"?", amNone},
 
-	0x0c: insInfo{"ill", amNone},
-	0x1c: insInfo{"ill", amNone},
+	0x0c: insInfo{"?", amNone},
+	0x1c: insInfo{"?", amNone},
 	0x2c: insInfo{"bit", amAbs},
-	0x3c: insInfo{"ill", amNone},
+	0x3c: insInfo{"?", amNone},
 	0x4c: insInfo{"jmp", amAbs},
-	0x5c: insInfo{"ill", amNone},
+	0x5c: insInfo{"?", amNone},
 	0x6c: insInfo{"jmp", amInd},
-	0x7c: insInfo{"ill", amNone},
+	0x7c: insInfo{"?", amNone},
 	0x8c: insInfo{"sty", amAbs},
-	0x9c: insInfo{"ill", amNone},
+	0x9c: insInfo{"?", amNone},
 	0xac: insInfo{"ldy", amAbs},
 	0xbc: insInfo{"ldy", amAbsX},
 	0xcc: insInfo{"cpy", amAbs},
-	0xdc: insInfo{"ill", amNone},
+	0xdc: insInfo{"?", amNone},
 	0xec: insInfo{"cpx", amAbs},
-	0xfc: insInfo{"ill", amNone},
+	0xfc: insInfo{"?", amNone},
 
 	0x0d: insInfo{"ora", amAbs},
 	0x1d: insInfo{"ora", amAbsX},
@@ -329,7 +329,7 @@ var opcodeInfo = map[uint8]insInfo{
 	0x6e: insInfo{"ror", amAbs},
 	0x7e: insInfo{"ror", amAbsX},
 	0x8e: insInfo{"stx", amAbs},
-	0x9e: insInfo{"ill", amNone},
+	0x9e: insInfo{"?", amNone},
 	0xae: insInfo{"ldx", amAbs},
 	0xbe: insInfo{"ldx", amAbsY},
 	0xce: insInfo{"dec", amAbs},
@@ -343,7 +343,7 @@ func opcodeLookup(code uint8) *insInfo {
 	if info, ok := opcodeInfo[code]; ok {
 		return &info
 	}
-	return &insInfo{"ill", amNone}
+	return &insInfo{"?", amNone}
 }
 
 // insDescr maps the instruction mneumonic onto a full description.
@@ -438,6 +438,8 @@ func dump8(name string, x, oldx uint8) string {
 	return strings.Join(s, " ")
 }
 
+/*
+
 // Dump returns a display string for the CPU registers.
 func (r *Registers) Dump(x *Registers) string {
 	if x == nil {
@@ -450,6 +452,32 @@ func (r *Registers) Dump(x *Registers) string {
 	s[3] = dump8("A", r.A, x.A)
 	s[4] = dump8("X", r.X, x.X)
 	s[5] = dump8("Y", r.Y, x.Y)
+	return strings.Join(s, "\n")
+}
+
+*/
+
+//-----------------------------------------------------------------------------
+
+func toBits(x uint8) string {
+	var s [8]string
+	mask := uint8(0x80)
+	for i := range s {
+		if x&mask == 0 {
+			s[i] = "0"
+		} else {
+			s[i] = "1"
+		}
+		mask >>= 1
+	}
+	return strings.Join(s[:], " ")
+}
+
+// Dump returns a display string for the CPU registers.
+func (r *Registers) Dump(x *Registers) string {
+	s := make([]string, 2)
+	s[0] = fmt.Sprintf("pc   a  x  y  p  s    n v - b d i z c")
+	s[1] = fmt.Sprintf("%04x %02x %02x %02x %02x %02x   %s", r.PC, r.A, r.X, r.Y, r.P, r.S, toBits(r.P))
 	return strings.Join(s, "\n")
 }
 

@@ -15,6 +15,7 @@ import (
 
 //-----------------------------------------------------------------------------
 
+// SymbolTable maps an address to a symbol.
 type SymbolTable map[uint16]string
 
 // Disassembly returns the result of the disassembler call.
@@ -73,9 +74,13 @@ func daInstruction(adr uint16, mem []uint8) (string, string) {
 		operand := int(mem[1]) + (int(mem[2]) << 8)
 		s = append(s, fmt.Sprintf("$%04x", operand))
 	case amAbsX:
-		s = append(s, "TODO absolute, X-indexed")
+		// absolute, X-indexed - 2 byte operand
+		operand := int(mem[1]) + (int(mem[2]) << 8)
+		s = append(s, fmt.Sprintf("$%04x,x", operand))
 	case amAbsY:
-		s = append(s, "TODO absolute, Y-indexed")
+		// absolute, Y-indexed - 2 byte operand
+		operand := int(mem[1]) + (int(mem[2]) << 8)
+		s = append(s, fmt.Sprintf("$%04x,y", operand))
 	case amImm:
 		// immediate - 1 byte operand
 		operand := mem[1]
@@ -83,9 +88,13 @@ func daInstruction(adr uint16, mem []uint8) (string, string) {
 	case amImpl:
 		// implied - no operands
 	case amInd:
-		s = append(s, "TODO indirect")
+		// indirect - 2 byte operand
+		operand := int(mem[1]) + (int(mem[2]) << 8)
+		s = append(s, fmt.Sprintf("($%04x)", operand))
 	case amXInd:
-		s = append(s, "TODO X-indexed, indirect")
+		// X-indexed, indirect - 1 byte operand
+		operand := mem[1]
+		s = append(s, fmt.Sprintf("($%02x,x)", operand))
 	case amIndY:
 		// indirect, Y-indexed - 1 byte operand
 		operand := mem[1]
@@ -105,7 +114,9 @@ func daInstruction(adr uint16, mem []uint8) (string, string) {
 		operand := mem[1]
 		s = append(s, fmt.Sprintf("$%02x,x", operand))
 	case amZpgY:
-		s = append(s, "TODO zeropage, Y-indexed")
+		// zeropage, Y-indexed - 1 byte operand
+		operand := mem[1]
+		s = append(s, fmt.Sprintf("$%02x,y", operand))
 	default:
 		panic("bad address mode")
 	}
