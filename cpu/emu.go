@@ -42,6 +42,10 @@ func (m *M6502) readPointer(adr uint16) uint16 {
 	return m.read16(adr)
 }
 
+func (m *M6502) write8(adr uint16, val uint8) {
+	m.mem.Write8(adr, val)
+}
+
 //-----------------------------------------------------------------------------
 
 func (m *M6502) push8(val uint8) {
@@ -69,46 +73,308 @@ func (m *M6502) pop16() uint16 {
 
 //-----------------------------------------------------------------------------
 
-func (m *M6502) readIndirectX() (uint8, uint) {
-	return 0, 0
+func modeIndex(op uint8) int {
+	return int((op & 0x1c) >> 2)
 }
 
-func (m *M6502) readZeroPage() (uint8, uint) {
-	return 0, 0
+//-----------------------------------------------------------------------------
+// address mode write functions
+
+func writeZeroPage(m *M6502, val uint8) uint {
+	m.reg.PC += 2
+	ea := m.read8(m.reg.PC - 1)
+	m.write8(uint16(ea), val)
+	return 3
 }
 
-func (m *M6502) readImmediate() (uint8, uint) {
-	return 0, 0
+func writeZeroPageX(m *M6502, val uint8) uint {
+	m.reg.PC += 2
+	ea := m.read8(m.reg.PC-1) + m.reg.X
+	m.write8(uint16(ea), val)
+	return 4
 }
 
-func (m *M6502) readAbsolute() (uint8, uint) {
-	return 0, 0
+func writeZeroPageY(m *M6502, val uint8) uint {
+	m.reg.PC += 2
+	ea := m.read8(m.reg.PC-1) + m.reg.Y
+	m.write8(uint16(ea), val)
+	return 4
 }
 
-func (m *M6502) readIndirectY() (uint8, uint) {
-	return 0, 0
+func writeAbsolute(m *M6502, val uint8) uint {
+	m.reg.PC += 3
+	ea := m.read16(m.reg.PC - 2)
+	m.write8(ea, val)
+	return 4
 }
 
-func (m *M6502) readZeroPageX() (uint8, uint) {
-	return 0, 0
+func writeAbsoluteX(m *M6502, val uint8) uint {
+	m.reg.PC += 3
+	ea := m.read16(m.reg.PC-2) + uint16(m.reg.X)
+	m.write8(ea, val)
+	return 5
 }
 
-func (m *M6502) readAbsoluteY() (uint8, uint) {
-	return 0, 0
+func writeAbsoluteY(m *M6502, val uint8) uint {
+	m.reg.PC += 3
+	ea := m.read16(m.reg.PC-2) + uint16(m.reg.Y)
+	m.write8(ea, val)
+	return 5
 }
 
-func (m *M6502) readAbsoluteX() (uint8, uint) {
-	return 0, 0
+func writeIndirectX(m *M6502, val uint8) uint {
+	m.reg.PC += 2
+	ea := m.read16(uint16(m.read8(m.reg.PC-1) + m.reg.X))
+	m.write8(ea, val)
+	return 6
+}
+
+func writeIndirectY(m *M6502, val uint8) uint {
+	m.reg.PC += 2
+	ea := m.read16(uint16(m.read8(m.reg.PC-1))) + uint16(m.reg.Y)
+	m.write8(ea, val)
+	return 6
+}
+
+type wrFunc func(m *M6502, val uint8) uint
+
+var writeKTable = [8]wrFunc{
+	writeIndirectX,
+	writeZeroPage,
+	nil,
+	writeAbsolute,
+	writeIndirectY,
+	writeZeroPageX,
+	writeAbsoluteY,
+	writeAbsoluteX,
+}
+
+func (m *M6502) writeK(op, val uint8) uint {
+	return writeKTable[modeIndex(op)](m, val)
+}
+
+var writeHTable = [8]wrFunc{
+	nil,
+	writeZeroPage,
+	nil,
+	writeAbsolute,
+	nil,
+	writeZeroPageY,
+}
+
+func (m *M6502) writeH(op, val uint8) uint {
+	return writeHTable[modeIndex(op)](m, val)
+}
+
+var writeQTable = [8]wrFunc{
+	nil,
+	writeZeroPage,
+	nil,
+	writeAbsolute,
+	nil,
+	writeZeroPageX,
+}
+
+func (m *M6502) writeQ(op, val uint8) uint {
+	return writeQTable[modeIndex(op)](m, val)
+}
+
+func (m *M6502) writeG(op, val uint8) uint {
+	//#define WRITE_G(value) if (EA_CYCLES == 2) A = value; else WRITE_8(EA, value);
+
+	// TODO
+
+	return 0
+
+}
+
+//-----------------------------------------------------------------------------
+// address mode read functions
+
+func readAccumulator(m *M6502) (uint8, uint) {
+	m.reg.PC++
+	return m.reg.A, 2
+}
+
+func readImmediate(m *M6502) (uint8, uint) {
+	m.reg.PC += 2
+	return m.read8(m.reg.PC - 1), 2
+}
+
+func readZeroPage(m *M6502) (uint8, uint) {
+	m.reg.PC += 2
+	ea := m.read8(m.reg.PC - 1)
+	return m.read8(uint16(ea)), 3
+}
+
+func readZeroPageX(m *M6502) (uint8, uint) {
+	m.reg.PC += 2
+	ea := m.read8(m.reg.PC-1) + m.reg.X
+	return m.read8(uint16(ea)), 4
+}
+
+func readZeroPageY(m *M6502) (uint8, uint) {
+	m.reg.PC += 2
+	ea := m.read8(m.reg.PC-1) + m.reg.Y
+	return m.read8(uint16(ea)), 4
+}
+
+func readAbsolute(m *M6502) (uint8, uint) {
+	m.reg.PC += 3
+	ea := m.read16(m.reg.PC - 2)
+	return m.read8(ea), 4
+}
+
+func readIndirectX(m *M6502) (uint8, uint) {
+	m.reg.PC += 2
+	ea := m.read16(uint16(m.read8(m.reg.PC-1) + m.reg.X))
+	return m.read8(ea), 6
+}
+
+func readGZeroPage(m *M6502) (uint8, uint) {
+	m.reg.PC += 2
+	ea := m.read8(m.reg.PC - 1)
+	return m.read8(uint16(ea)), 5
+}
+
+func readGZeroPageX(m *M6502) (uint8, uint) {
+	m.reg.PC += 2
+	ea := m.read8(m.reg.PC-1) + m.reg.X
+	return m.read8(uint16(ea)), 6
+}
+
+func readGAbsolute(m *M6502) (uint8, uint) {
+	m.reg.PC += 3
+	ea := m.read16(m.reg.PC - 2)
+	return m.read8(ea), 6
+}
+
+func readGAbsoluteX(m *M6502) (uint8, uint) {
+	m.reg.PC += 3
+	ea := m.read16(m.reg.PC-2) + uint16(m.reg.X)
+	return m.read8(ea), 7
+}
+
+func readPenalizedAbsoluteX(m *M6502) (uint8, uint) {
+	m.reg.PC += 3
+	ea := m.read16(m.reg.PC - 2)
+	cycles := uint(4)
+	if int(ea&0xff)+int(m.reg.X) > 0xff {
+		cycles++
+	}
+	ea += uint16(m.reg.X)
+	return m.read8(ea), cycles
+}
+
+func readPenalizedAbsoluteY(m *M6502) (uint8, uint) {
+	m.reg.PC += 3
+	ea := m.read16(m.reg.PC - 2)
+	cycles := uint(4)
+	if int(ea&0xff)+int(m.reg.Y) > 0xff {
+		cycles++
+	}
+	ea += uint16(m.reg.Y)
+	return m.read8(ea), cycles
+}
+
+func readPenalizedIndirectY(m *M6502) (uint8, uint) {
+	m.reg.PC += 2
+	ea := m.read16(uint16(m.read8(m.reg.PC - 1)))
+	cycles := uint(5)
+	if int(ea&0xff)+int(m.reg.Y) > 0xff {
+		cycles++
+	}
+	ea += uint16(m.reg.Y)
+	return m.read8(ea), cycles
+}
+
+type rdFunc func(m *M6502) (uint8, uint)
+
+var readJTable = [8]rdFunc{
+	readIndirectX,
+	readZeroPage,
+	readImmediate,
+	readAbsolute,
+	readPenalizedIndirectY,
+	readZeroPageX,
+	readPenalizedAbsoluteY,
+	readPenalizedAbsoluteX,
+}
+
+func (m *M6502) readJ(op uint8) (uint8, uint) {
+	return readJTable[modeIndex(op)](m)
+}
+
+var readGTable = [8]rdFunc{
+	nil,
+	readGZeroPage,
+	readAccumulator,
+	readGAbsolute,
+	nil,
+	readGZeroPageX,
+	nil,
+	readGAbsoluteX,
+}
+
+func (m *M6502) readG(op uint8) (uint8, uint) {
+	return readGTable[modeIndex(op)](m)
+}
+
+var readHTable = [8]rdFunc{
+	readImmediate,
+	readZeroPage,
+	nil,
+	readAbsolute,
+	nil,
+	readZeroPageY,
+	nil,
+	readPenalizedAbsoluteY,
+}
+
+func (m *M6502) readH(op uint8) (uint8, uint) {
+	return readHTable[modeIndex(op)](m)
+}
+
+var readQTable = [8]rdFunc{
+	readImmediate,
+	readZeroPage,
+	nil,
+	readAbsolute,
+	nil,
+	readZeroPageX,
+	nil,
+	readPenalizedAbsoluteX,
+}
+
+func (m *M6502) readQ(op uint8) (uint8, uint) {
+	return readQTable[modeIndex(op)](m)
+}
+
+//-----------------------------------------------------------------------------
+
+func (m *M6502) branch(cond bool) uint {
+	cycles := 2
+	if cond {
+		pc := m.reg.PC + 2
+		ofs := int8(m.read8(m.reg.PC + 1))
+		t := uint16(int(pc) + int(ofs))
+		if (t >> 8) == (pc >> 8) {
+			cycles++
+		} else {
+			cycles += 2
+		}
+		m.reg.PC = t
+	} else {
+		m.reg.PC += 2
+	}
+	return uint(cycles)
 }
 
 //-----------------------------------------------------------------------------
 
 // opADC, add with carry
 func opADC(m *M6502, op uint8) uint {
-
-	v := uint8(0) // TODO
-	n := uint(3)  // TODO
-
+	v, cycles := m.readJ(op)
 	c := m.reg.P & flagC
 	if m.reg.P&flagD != 0 {
 		l := uint(m.reg.A&0x0F) + uint(v&0x0F) + uint(c)
@@ -146,8 +412,7 @@ func opADC(m *M6502, op uint8) uint {
 		m.reg.A = uint8(t)
 		m.setNZ(m.reg.A)
 	}
-
-	return n
+	return cycles
 }
 
 // opAND, and (with accumulator)
@@ -164,20 +429,17 @@ func opASL(m *M6502, op uint8) uint {
 
 // opBCC, branch on carry clear
 func opBCC(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	return m.branch(m.reg.P&flagC == 0)
 }
 
 // opBCS, branch on carry set
 func opBCS(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	return m.branch(m.reg.P&flagC != 0)
 }
 
 // opBEQ, branch on equal (zero set)
 func opBEQ(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	return m.branch(m.reg.P&flagZ != 0)
 }
 
 // opBIT, bit test
@@ -188,20 +450,17 @@ func opBIT(m *M6502, op uint8) uint {
 
 // opBMI, branch on minus (negative set)
 func opBMI(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	return m.branch(m.reg.P&flagN != 0)
 }
 
 // opBNE, branch on not equal (zero clear)
 func opBNE(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	return m.branch(m.reg.P&flagZ == 0)
 }
 
 // opBPL, branch on plus (negative clear)
 func opBPL(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	return m.branch(m.reg.P&flagN == 0)
 }
 
 // opBRK, break / interrupt
@@ -216,38 +475,40 @@ func opBRK(m *M6502, op uint8) uint {
 
 // opBVC, branch on overflow clear
 func opBVC(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	return m.branch(m.reg.P&flagV == 0)
 }
 
 // opBVS, branch on overflow set
 func opBVS(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	return m.branch(m.reg.P&flagV != 0)
 }
 
 // opCLC, clear carry
 func opCLC(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.reg.P &= ^flagC
+	return 2
 }
 
 // opCLD, clear decimal
 func opCLD(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.reg.P &= ^flagD
+	return 2
 }
 
 // opCLI, clear interrupt disable
 func opCLI(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.reg.P &= ^flagI
+	return 2
 }
 
 // opCLV, clear overflow
 func opCLV(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.reg.P &= ^flagV
+	return 2
 }
 
 // opCMP, compare (with accumulator)
@@ -276,14 +537,18 @@ func opDEC(m *M6502, op uint8) uint {
 
 // opDEX, decrement X
 func opDEX(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.reg.X--
+	m.setNZ(m.reg.X)
+	return 2
 }
 
 // opDEY, decrement Y
 func opDEY(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.reg.Y--
+	m.setNZ(m.reg.Y)
+	return 2
 }
 
 // opEOR, exclusive or (with accumulator)
@@ -306,24 +571,28 @@ func opINC(m *M6502, op uint8) uint {
 
 // opINX, increment X
 func opINX(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.reg.X++
+	m.setNZ(m.reg.X)
+	return 2
 }
 
 // opINY, increment Y
 func opINY(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.reg.Y++
+	m.setNZ(m.reg.Y)
+	return 2
 }
 
-// opJMPabs, jump, absolute mode
-func opJMPabs(m *M6502, op uint8) uint {
-	m.reg.PC = m.read16(m.reg.PC + 1)
-	return 3
-}
-
-// opJMPind, jump, indirect mode
-func opJMPind(m *M6502, op uint8) uint {
+// opJMP, jump
+func opJMP(m *M6502, op uint8) uint {
+	if op == 0x4c {
+		// absolute mode
+		m.reg.PC = m.read16(m.reg.PC + 1)
+		return 3
+	}
+	// indirect mode
 	m.reg.PC = m.read16(m.read16(m.reg.PC + 1))
 	return 5
 }
@@ -361,8 +630,8 @@ func opLSR(m *M6502, op uint8) uint {
 
 // opNOP, no operation
 func opNOP(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	return 2
 }
 
 // opORA, or with accumulator
@@ -373,26 +642,32 @@ func opORA(m *M6502, op uint8) uint {
 
 // opPHA, push accumulator
 func opPHA(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.push8(m.reg.A)
+	return 3
 }
 
 // opPHP, push processor status (SR)
 func opPHP(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.push8(m.reg.P)
+	return 3
 }
 
 // opPLA, pull accumulator
 func opPLA(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.reg.A = m.pop8()
+	m.setNZ(m.reg.A)
+	return 4
+
 }
 
 // opPLP, pull processor status (SR)
 func opPLP(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.reg.P = m.pop8()
+	return 4
 }
 
 // opROL, rotate left
@@ -409,8 +684,9 @@ func opROR(m *M6502, op uint8) uint {
 
 // opRTI, return from interrupt
 func opRTI(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.P = m.pop8()
+	m.reg.PC = m.pop16()
+	return 6
 }
 
 // opRTS, return from subroutine
@@ -427,20 +703,23 @@ func opSBC(m *M6502, op uint8) uint {
 
 // opSEC, set carry
 func opSEC(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.reg.P |= flagC
+	return 2
 }
 
 // opSED, set decimal
 func opSED(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.reg.P |= flagD
+	return 2
 }
 
 // opSEI, set interrupt disable
 func opSEI(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.reg.P |= flagI
+	return 2
 }
 
 // opSTA, store accumulator
@@ -479,8 +758,10 @@ func opTAY(m *M6502, op uint8) uint {
 
 // opTSX, transfer stack pointer to X
 func opTSX(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.reg.X = m.reg.S
+	m.setNZ(m.reg.X)
+	return 2
 }
 
 // opTXA, transfer X to accumulator
@@ -493,8 +774,9 @@ func opTXA(m *M6502, op uint8) uint {
 
 // opTXS, transfer X to stack pointer
 func opTXS(m *M6502, op uint8) uint {
-	emuTODO()
-	return 0
+	m.reg.PC++
+	m.reg.S = m.reg.X
+	return 2
 }
 
 // opTYA, transfer Y to accumulator
@@ -512,9 +794,9 @@ var opcodeTable = [256]opFunc{
 	opBPL, opORA, opILL, opILL, opILL, opORA, opASL, opILL, opCLC, opORA, opILL, opILL, opILL, opORA, opASL, opILL,
 	opJSR, opAND, opILL, opILL, opBIT, opAND, opROL, opILL, opPLP, opAND, opROL, opILL, opBIT, opAND, opROL, opILL,
 	opBMI, opAND, opILL, opILL, opILL, opAND, opROL, opILL, opSEC, opAND, opILL, opILL, opILL, opAND, opROL, opILL,
-	opRTI, opEOR, opILL, opILL, opILL, opEOR, opLSR, opILL, opPHA, opEOR, opLSR, opILL, opJMPabs, opEOR, opLSR, opILL,
+	opRTI, opEOR, opILL, opILL, opILL, opEOR, opLSR, opILL, opPHA, opEOR, opLSR, opILL, opJMP, opEOR, opLSR, opILL,
 	opBVC, opEOR, opILL, opILL, opILL, opEOR, opLSR, opILL, opCLI, opEOR, opILL, opILL, opILL, opEOR, opLSR, opILL,
-	opRTS, opADC, opILL, opILL, opILL, opADC, opROR, opILL, opPLA, opADC, opROR, opILL, opJMPind, opADC, opROR, opILL,
+	opRTS, opADC, opILL, opILL, opILL, opADC, opROR, opILL, opPLA, opADC, opROR, opILL, opJMP, opADC, opROR, opILL,
 	opBVS, opADC, opILL, opILL, opILL, opADC, opROR, opILL, opSEI, opADC, opILL, opILL, opILL, opADC, opROR, opILL,
 	opILL, opSTA, opILL, opILL, opSTY, opSTA, opSTX, opILL, opDEY, opILL, opTXA, opILL, opSTY, opSTA, opSTX, opILL,
 	opBCC, opSTA, opILL, opILL, opSTY, opSTA, opSTX, opILL, opTYA, opSTA, opTXS, opILL, opILL, opSTA, opILL, opILL,
