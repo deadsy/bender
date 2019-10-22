@@ -1,6 +1,7 @@
 
-DIRS = cmd \
-       test \
+DIRS = da \
+       emu \
+       gen \
 
 all:
 	for dir in $(DIRS); do \
