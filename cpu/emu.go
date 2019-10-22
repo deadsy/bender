@@ -469,7 +469,7 @@ func opBRK(m *M6502, op uint8) uint {
 	m.push16(m.reg.PC + 2)
 	m.push8(m.reg.P | flagB)
 	m.reg.P |= flagB | flagI
-	m.reg.PC = m.readPointer(brkAddress)
+	m.reg.PC = m.readPointer(BrkAddress)
 	return 7
 }
 
@@ -844,7 +844,7 @@ func (m *M6502) Power(state bool) {
 
 // Reset the 6502 CPU.
 func (m *M6502) Reset() {
-	m.reg.PC = m.readPointer(rstAddress)
+	m.reg.PC = m.readPointer(RstAddress)
 	m.reg.S = initialS
 	m.reg.P = initialP
 	m.irq = false
@@ -874,7 +874,7 @@ func (m *M6502) Run(cycles uint) uint {
 			m.reg.P &= ^flagB                    // clear the break flag
 			m.push16(m.reg.PC)                   // save return addres in the stack.
 			m.push8(m.reg.P)                     // save current status in the stack.
-			m.reg.PC = m.readPointer(nmiAddress) // make PC point to the NMI routine.
+			m.reg.PC = m.readPointer(NmiAddress) // make PC point to the NMI routine.
 			m.reg.P |= flagI                     // disable interrupts
 			clks += 7                            // accepting an NMI consumes 7 ticks.
 			continue
@@ -885,7 +885,7 @@ func (m *M6502) Run(cycles uint) uint {
 			m.reg.P &= ^flagB
 			m.push16(m.reg.PC)
 			m.push8(m.reg.P)
-			m.reg.PC = m.readPointer(irqAddress)
+			m.reg.PC = m.readPointer(IrqAddress)
 			m.reg.P |= flagI
 			clks += 7
 			continue

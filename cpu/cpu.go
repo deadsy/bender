@@ -44,10 +44,10 @@ type M6502 struct {
 	mem Memory    // memory of the target system
 }
 
-const nmiAddress = 0xFFFA // non maskable interrupt
-const rstAddress = 0XFFFC // reset
-const irqAddress = 0xFFFE // interrupt request
-const brkAddress = 0xFFFE // break
+const NmiAddress = 0xFFFA // non maskable interrupt
+const RstAddress = 0XFFFC // reset
+const IrqAddress = 0xFFFE // interrupt request
+const BrkAddress = 0xFFFE // break
 const stkAddress = 0x0100 // stack
 
 const initialPC = 0x0000

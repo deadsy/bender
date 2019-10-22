@@ -6,6 +6,7 @@ XAS = $(BASE)/bin/ca65
 XLD = $(BASE)/bin/ld65
 SIM = $(BASE)/bin/sim65
 
+#TGT = c64
 TGT = sim6502
 
 OUT = test1
