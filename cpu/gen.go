@@ -19,40 +19,61 @@ import (
 // generate the opcode function name
 func opcodeFuncName(code uint8) string {
 	x := opcodeLookup(code)
-	ins := strings.ToUpper(x.ins)
-	return fmt.Sprintf("op%s", ins)
+	if x.ins == "ill" {
+		return "opXX"
+	}
+	return fmt.Sprintf("op%02X", code)
 }
 
 // generate the opcode function comment
 func opcodeFuncComment(code uint8) string {
 	x := opcodeLookup(code)
-	name := opcodeFuncName(code)
-	descr := insDescr[x.ins]
-	return fmt.Sprintf("// %s, %s", name, descr)
+	s := make([]string, 0)
+	s = append(s, opcodeFuncName(code))
+	s = append(s, fmt.Sprintf("%s %s", strings.ToUpper(x.ins), insDescr[x.ins]))
+	if x.mode != amNone && x.mode != amImpl {
+		s = append(s, modeDescr[x.mode].descr)
+	}
+	return fmt.Sprintf("// %s", strings.Join(s, ", "))
 }
 
 // generate the opcode function template
 func genOpcodeFunction(code uint8) string {
-	name := opcodeFuncName(code)
-	s := make([]string, 5)
-	s[0] = opcodeFuncComment(code)
-	s[1] = fmt.Sprintf("func %s(m *M6502, op uint8) uint {", name)
-	s[2] = fmt.Sprintf("emuTODO()")
-	s[3] = fmt.Sprintf("return %d", 0)
-	s[4] = "}"
+
+  s := make([]string, 0)
+	s = append(s, opcodeFuncComment(code))
+	s = append(s, fmt.Sprintf("func %s(m *M6502) uint {", opcodeFuncName(code)))
+	s = append(s, fmt.Sprintf("panic(\"TODO\")"))
+
+	n := insLength(code)
+	if n == 1 {
+		s = append(s, "m.PC ++")
+	} else {
+		s = append(s, fmt.Sprintf("m.PC += %d", n))
+	}
+
+	s = append(s, "return 0")
+	s = append(s, "}")
 	return strings.Join(s, "\n")
 }
 
 // genOpcodes generates the unique sorted list of opcodes.
 func genOpcodes() []uint8 {
 
-	// get the unique set of opcode function names
+	// get the unique set of opcode mneumonics
 	fset := make(map[string]uint8)
 	for code := 0; code < 256; code++ {
-		fset[opcodeFuncName(uint8(code))] = uint8(code)
+		x := opcodeLookup(uint8(code))
+		var s string
+		if x.ins == "ill" {
+			s = "ill"
+		} else {
+			s = fmt.Sprintf("%s%02x", x.ins, code)
+		}
+		fset[s] = uint8(code)
 	}
 
-	// sort the opcode function names
+	// sort the opcodes
 	flist := make([]string, len(fset))
 	i := 0
 	for name := range fset {
@@ -101,7 +122,7 @@ func genOpcodeTable() string {
 func GenOpcodeFunctions() string {
 	s := make([]string, 3)
 	s[0] = genOpcodeFunctions()
-	s[1] = "type opFunc func(m *M6502, op uint8) uint"
+	s[1] = "type opFunc func(m *M6502) uint"
 	s[2] = genOpcodeTable()
 	return strings.Join(s, "\n\n")
 

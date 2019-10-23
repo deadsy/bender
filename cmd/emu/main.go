@@ -89,7 +89,6 @@ func (m *memory) Load(filename string) (string, error) {
 type userApp struct {
 	mem       *memory
 	cpu       *cpu.M6502
-	savedRegs *cpu.Registers
 }
 
 // newUserApp returns a user application.

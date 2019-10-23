@@ -233,10 +233,7 @@ var cmdRegisters = cli.Leaf{
 	Descr: "display cpu registers",
 	F: func(c *cli.CLI, args []string) {
 		m := c.User.(*userApp).cpu
-		regs := m.ReadRegisters()
-		saved := c.User.(*userApp).savedRegs
-		c.User.Put(fmt.Sprintf("%s\n", regs.Dump(saved)))
-		c.User.(*userApp).savedRegs = regs
+		c.User.Put(fmt.Sprintf("%s\n", m.Dump()))
 	},
 }
 

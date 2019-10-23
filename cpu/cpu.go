@@ -26,22 +26,17 @@ type Memory interface {
 
 //-----------------------------------------------------------------------------
 
-// Registers is the set of 6502 CPU registers.
-type Registers struct {
-	PC uint16 // program counter
-	S  uint8  // stack pointer
-	P  uint8  // processor status flags
-	A  uint8  // accumulator
-	X  uint8  // x index
-	Y  uint8  // y index
-}
-
 // M6502 is the state for the 6502 CPU.
 type M6502 struct {
-	reg Registers // registers
-	nmi bool      // nmi state
-	irq bool      // irq state
-	mem Memory    // memory of the target system
+	PC  uint16 // program counter
+	S   uint8  // stack pointer
+	P   uint8  // processor status flags
+	A   uint8  // accumulator
+	X   uint8  // x index
+	Y   uint8  // y index
+	nmi bool   // nmi state
+	irq bool   // irq state
+	mem Memory // memory of the target system
 }
 
 const NmiAddress = 0xFFFA // non maskable interrupt
@@ -102,17 +97,17 @@ var modeDescr = map[adrMode]adrModeInfo{
 	amNone: {"", ""},
 	amAcc:  {"acc", "accumulator"},
 	amAbs:  {"abs", "absolute"},
-	amAbsX: {"absx", "absolute, X-indexed"},
-	amAbsY: {"absy", "absolute, Y-indexed"},
+	amAbsX: {"absx", "absolute X-indexed"},
+	amAbsY: {"absy", "absolute Y-indexed"},
 	amImm:  {"imm", "immediate"},
 	amImpl: {"impl", "implied"},
 	amInd:  {"ind", "indirect"},
-	amXInd: {"xind", "X-indexed, indirect"},
-	amIndY: {"indy", "indirect, Y-indexed"},
+	amXInd: {"xind", "X-indexed indirect"},
+	amIndY: {"indy", "indirect Y-indexed"},
 	amRel:  {"rel", "relative"},
 	amZpg:  {"z", "zeropage"},
-	amZpgX: {"zx", "zeropage, X-indexed"},
-	amZpgY: {"zy", "zeropage, Y-indexed"},
+	amZpgX: {"zx", "zeropage X-indexed"},
+	amZpgY: {"zy", "zeropage Y-indexed"},
 }
 
 var insLengthByMode = []int{
@@ -358,7 +353,7 @@ var insDescr = map[string]string{
 	"bmi": "branch on minus (negative set)",
 	"bne": "branch on not equal (zero clear)",
 	"bpl": "branch on plus (negative clear)",
-	"brk": "break / interrupt",
+	"brk": "break/interrupt",
 	"bvc": "branch on overflow clear",
 	"bvs": "branch on overflow set",
 	"clc": "clear carry",
@@ -372,6 +367,7 @@ var insDescr = map[string]string{
 	"dex": "decrement X",
 	"dey": "decrement Y",
 	"eor": "exclusive or (with accumulator)",
+	"ill": "illegal",
 	"inc": "increment",
 	"inx": "increment X",
 	"iny": "increment Y",
@@ -472,10 +468,10 @@ func toBits(x uint8) string {
 }
 
 // Dump returns a display string for the CPU registers.
-func (r *Registers) Dump(x *Registers) string {
+func (m *M6502) Dump() string {
 	s := make([]string, 2)
 	s[0] = fmt.Sprintf("pc   a  x  y  p  s    n v - b d i z c")
-	s[1] = fmt.Sprintf("%04x %02x %02x %02x %02x %02x   %s", r.PC, r.A, r.X, r.Y, r.P, r.S, toBits(r.P))
+	s[1] = fmt.Sprintf("%04x %02x %02x %02x %02x %02x   %s", m.PC, m.A, m.X, m.Y, m.P, m.S, toBits(m.P))
 	return strings.Join(s, "\n")
 }
 
