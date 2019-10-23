@@ -247,7 +247,10 @@ var cmdRun = cli.Leaf{
 var cmdStep = cli.Leaf{
 	Descr: "single step the emulation",
 	F: func(c *cli.CLI, args []string) {
-		//c.Exit()
+		m := c.User.(*userApp).cpu
+		s := m.Disassemble(m.PC, 1)
+		m.Run(1)
+		c.User.Put(fmt.Sprintf("%s\n", s))
 	},
 }
 

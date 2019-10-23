@@ -87,8 +87,8 @@ func (m *memory) Load(filename string) (string, error) {
 
 // userApp is state associated with the user application.
 type userApp struct {
-	mem       *memory
-	cpu       *cpu.M6502
+	mem *memory
+	cpu *cpu.M6502
 }
 
 // newUserApp returns a user application.

@@ -40,7 +40,7 @@ func opcodeFuncComment(code uint8) string {
 // generate the opcode function template
 func genOpcodeFunction(code uint8) string {
 
-  s := make([]string, 0)
+	s := make([]string, 0)
 	s = append(s, opcodeFuncComment(code))
 	s = append(s, fmt.Sprintf("func %s(m *M6502) uint {", opcodeFuncName(code)))
 	s = append(s, fmt.Sprintf("panic(\"TODO\")"))

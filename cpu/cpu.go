@@ -28,15 +28,16 @@ type Memory interface {
 
 // M6502 is the state for the 6502 CPU.
 type M6502 struct {
-	PC  uint16 // program counter
-	S   uint8  // stack pointer
-	P   uint8  // processor status flags
-	A   uint8  // accumulator
-	X   uint8  // x index
-	Y   uint8  // y index
-	nmi bool   // nmi state
-	irq bool   // irq state
-	mem Memory // memory of the target system
+	PC      uint16 // program counter
+	S       uint8  // stack pointer
+	P       uint8  // processor status flags
+	A       uint8  // accumulator
+	X       uint8  // x index
+	Y       uint8  // y index
+	nmi     bool   // nmi state
+	irq     bool   // irq state
+	illegal bool   // illegal instruction state
+	mem     Memory // memory of the target system
 }
 
 const NmiAddress = 0xFFFA // non maskable interrupt
@@ -158,7 +159,7 @@ var opcodeInfo = map[uint8]insInfo{
 	0xc0: insInfo{"cpy", amImm},
 	0xd0: insInfo{"bne", amRel},
 	0xe0: insInfo{"cpx", amImm},
-	0xf0: insInfo{"beq", amImm},
+	0xf0: insInfo{"beq", amRel},
 
 	0x01: insInfo{"ora", amXInd},
 	0x11: insInfo{"ora", amIndY},
