@@ -85,6 +85,27 @@ func (m *memory) Load(filename string) (string, error) {
 
 //-----------------------------------------------------------------------------
 
+func vsrOpen(m *cpu.M6502) {
+	fmt.Printf("*** vsrOpen ***\n")
+}
+func vsrClose(m *cpu.M6502) {
+	fmt.Printf("*** vsrClose ***\n")
+}
+func vsrRead(m *cpu.M6502) {
+	fmt.Printf("*** vsrRead ***\n")
+}
+func vsrWrite(m *cpu.M6502) {
+	fmt.Printf("*** vsrWrite ***\n")
+}
+func vsrArgs(m *cpu.M6502) {
+	fmt.Printf("*** vsrArgs ***\n")
+}
+func vsrExit(m *cpu.M6502) {
+	fmt.Printf("*** vsrExit ***\n")
+}
+
+//-----------------------------------------------------------------------------
+
 // userApp is state associated with the user application.
 type userApp struct {
 	mem *memory
@@ -100,6 +121,14 @@ func newUserApp(fname string) (*userApp, error) {
 	}
 	fmt.Printf("%s\n", status)
 	cpu := cpu.New6502(mem)
+
+	cpu.AddVSR(0xfff4, vsrOpen)
+	cpu.AddVSR(0xfff5, vsrClose)
+	cpu.AddVSR(0xfff6, vsrRead)
+	cpu.AddVSR(0xfff7, vsrWrite)
+	cpu.AddVSR(0xfff8, vsrArgs)
+	cpu.AddVSR(0xfff9, vsrExit)
+
 	return &userApp{
 		mem: mem,
 		cpu: cpu,

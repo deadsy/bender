@@ -26,18 +26,22 @@ type Memory interface {
 
 //-----------------------------------------------------------------------------
 
+// VSRFunc is the type for a virtual subroutine handler function.
+type VSRFunc func(m *M6502)
+
 // M6502 is the state for the 6502 CPU.
 type M6502 struct {
-	PC      uint16 // program counter
-	S       uint8  // stack pointer
-	P       uint8  // processor status flags
-	A       uint8  // accumulator
-	X       uint8  // x index
-	Y       uint8  // y index
-	nmi     bool   // nmi state
-	irq     bool   // irq state
-	illegal bool   // illegal instruction state
-	mem     Memory // memory of the target system
+	PC      uint16             // program counter
+	S       uint8              // stack pointer
+	P       uint8              // processor status flags
+	A       uint8              // accumulator
+	X       uint8              // x index
+	Y       uint8              // y index
+	nmi     bool               // nmi state
+	irq     bool               // irq state
+	illegal bool               // illegal instruction state
+	mem     Memory             // memory of the target system
+	vsr     map[uint16]VSRFunc // virtual subroutines
 }
 
 // NmiAddress is the non-maskable interrupt address

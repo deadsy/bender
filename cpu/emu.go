@@ -855,6 +855,7 @@ func op6C(m *M6502) uint {
 func op20(m *M6502) uint {
 	m.push16(m.PC + 2)
 	m.PC = m.read16(m.PC + 1)
+	m.callVSR()
 	return 6
 }
 
@@ -1554,6 +1555,28 @@ func (m *M6502) Run(cycles uint) uint {
 // ReadPC returns the 6502 program counter.
 func (m *M6502) ReadPC() uint16 {
 	return m.PC
+}
+
+//-----------------------------------------------------------------------------
+// virtual subroutines
+
+func (m *M6502) callVSR() {
+	if m.vsr != nil {
+		if fn, ok := m.vsr[m.PC]; ok {
+			// call the hook
+			fn(m)
+			// simulate RTS
+			m.PC = m.pop16() + 1
+		}
+	}
+}
+
+// AddVSR adds a virtual subroutine handler at the call address.
+func (m *M6502) AddVSR(adr uint16, fn VSRFunc) {
+	if m.vsr == nil {
+		m.vsr = make(map[uint16]VSRFunc)
+	}
+	m.vsr[adr] = fn
 }
 
 //-----------------------------------------------------------------------------
