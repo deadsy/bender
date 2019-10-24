@@ -68,90 +68,55 @@ func (m *M6502) pop16() uint16 {
 //-----------------------------------------------------------------------------
 // address mode write functions
 
-/*
-
-func writeZeroPage(m *M6502, val uint8) uint {
-	m.PC += 2
-	ea := m.read8(m.PC - 1)
+func (m *M6502) writeZeroPage(val uint8) {
+	ea := m.read8(m.PC + 1)
 	m.write8(uint16(ea), val)
-	return 3
 }
 
-func writeZeroPageX(m *M6502, val uint8) uint {
-	m.PC += 2
-	ea := m.read8(m.PC-1) + m.X
+func (m *M6502) writeZeroPageX(val uint8) {
+	ea := m.read8(m.PC+1) + m.X
 	m.write8(uint16(ea), val)
-	return 4
 }
 
-func writeZeroPageY(m *M6502, val uint8) uint {
-	m.PC += 2
-	ea := m.read8(m.PC-1) + m.Y
+func (m *M6502) writeZeroPageY(val uint8) {
+	ea := m.read8(m.PC+1) + m.Y
 	m.write8(uint16(ea), val)
-	return 4
 }
 
-func writeAbsolute(m *M6502, val uint8) uint {
-	m.PC += 3
-	ea := m.read16(m.PC - 2)
+func (m *M6502) writeAbsolute(val uint8) {
+	ea := m.read16(m.PC + 1)
 	m.write8(ea, val)
-	return 4
 }
 
-func writeAbsoluteX(m *M6502, val uint8) uint {
-	m.PC += 3
-	ea := m.read16(m.PC-2) + uint16(m.X)
+func (m *M6502) writeAbsoluteX(val uint8) {
+	ea := m.read16(m.PC+1) + uint16(m.X)
 	m.write8(ea, val)
-	return 5
 }
 
-func writeAbsoluteY(m *M6502, val uint8) uint {
-	m.PC += 3
-	ea := m.read16(m.PC-2) + uint16(m.Y)
+func (m *M6502) writeAbsoluteY(val uint8) {
+	ea := m.read16(m.PC+1) + uint16(m.Y)
 	m.write8(ea, val)
-	return 5
 }
 
-func writeIndirectX(m *M6502, val uint8) uint {
-	m.PC += 2
-	ea := m.read16(uint16(m.read8(m.PC-1) + m.X))
+func (m *M6502) writeIndirectX(val uint8) {
+	ea := m.read16(uint16(m.read8(m.PC+1) + m.X))
 	m.write8(ea, val)
-	return 6
 }
 
-func writeIndirectY(m *M6502, val uint8) uint {
-	m.PC += 2
-	ea := m.read16(uint16(m.read8(m.PC-1))) + uint16(m.Y)
+func (m *M6502) writeIndirectY(val uint8) {
+	ea := m.read16(uint16(m.read8(m.PC+1))) + uint16(m.Y)
 	m.write8(ea, val)
-	return 6
 }
-
-*/
 
 //-----------------------------------------------------------------------------
 // address mode read functions
-
-func (m *M6502) readIndirectX() (uint8, uint16) {
-	ea := m.read16(uint16(m.read8(m.PC+1) + m.X))
-	return m.read8(ea), ea
-}
-
-func (m *M6502) readZeroPage() (uint8, uint16) {
-	ea := uint16(m.read8(m.PC + 1))
-	return m.read8(ea), ea
-}
 
 func (m *M6502) readImmediate() uint8 {
 	return m.read8(m.PC + 1)
 }
 
-func (m *M6502) readAbsolute() (uint8, uint16) {
-	ea := m.read16(m.PC + 1)
-	return m.read8(ea), ea
-}
-
-func (m *M6502) readAbsoluteX() (uint8, uint16) {
-	ea := m.read16(m.PC+1) + uint16(m.X)
+func (m *M6502) readZeroPage() (uint8, uint16) {
+	ea := uint16(m.read8(m.PC + 1))
 	return m.read8(ea), ea
 }
 
@@ -165,42 +130,73 @@ func (m *M6502) readZeroPageY() (uint8, uint16) {
 	return m.read8(ea), ea
 }
 
-/*
+func (m *M6502) readAbsolute() (uint8, uint16) {
+	ea := m.read16(m.PC + 1)
+	return m.read8(ea), ea
+}
 
-func readPenalizedAbsoluteX(m *M6502) (uint8, uint) {
-	m.PC += 3
-	ea := m.read16(m.PC - 2)
-	cycles := uint(4)
-	if int(ea&0xff)+int(m.X) > 0xff {
-		cycles++
+func (m *M6502) readAbsoluteX() (uint8, uint16) {
+	ea := m.read16(m.PC+1) + uint16(m.X)
+	return m.read8(ea), ea
+}
+
+func (m *M6502) readAbsoluteY() (uint8, uint16) {
+	ea := m.read16(m.PC+1) + uint16(m.Y)
+	return m.read8(ea), ea
+}
+
+func (m *M6502) readIndirectX() (uint8, uint16) {
+	ea := m.read16(uint16(m.read8(m.PC+1) + m.X))
+	return m.read8(ea), ea
+}
+
+func (m *M6502) readIndirectY() (uint8, uint16) {
+	ea := m.read16(uint16(m.read8(m.PC+1))) + uint16(m.Y)
+	return m.read8(ea), ea
+}
+
+func (m *M6502) readAbsoluteXPenalized() (uint8, uint, uint16) {
+	ea := m.read16(m.PC + 1)
+	n := uint(0)
+	if (ea&0xff)+uint16(m.X) > 0xff {
+		n = 1
 	}
 	ea += uint16(m.X)
-	return m.read8(ea), cycles
+	return m.read8(ea), n, ea
 }
 
-func readPenalizedAbsoluteY(m *M6502) (uint8, uint) {
-	m.PC += 3
-	ea := m.read16(m.PC - 2)
-	cycles := uint(4)
-	if int(ea&0xff)+int(m.Y) > 0xff {
-		cycles++
+func (m *M6502) readAbsoluteYPenalized() (uint8, uint, uint16) {
+	ea := m.read16(m.PC + 1)
+	n := uint(0)
+	if (ea&0xff)+uint16(m.Y) > 0xff {
+		n = 1
 	}
 	ea += uint16(m.Y)
-	return m.read8(ea), cycles
+	return m.read8(ea), n, ea
 }
 
-func readPenalizedIndirectY(m *M6502) (uint8, uint) {
-	m.PC += 2
-	ea := m.read16(uint16(m.read8(m.PC - 1)))
-	cycles := uint(5)
-	if int(ea&0xff)+int(m.Y) > 0xff {
-		cycles++
+func (m *M6502) readIndirectYPenalized() (uint8, uint, uint16) {
+	ea := m.read16(uint16(m.read8(m.PC + 1)))
+	n := uint(0)
+	if (ea&0xff)+uint16(m.Y) > 0xff {
+		n = 1
 	}
 	ea += uint16(m.Y)
-	return m.read8(ea), cycles
+	return m.read8(ea), n, ea
 }
 
-*/
+//v := m.readImmediate()
+//v, _ := m.readZeroPage()
+//v, _ := m.readZeroPageX()
+//v, _ := m.readZeroPageY()
+//v, _ := m.readAbsolute()
+//v, _ := m.readAbsoluteX()
+//v, _ := m.readAbsoluteY()
+//v, _ := m.readIndirectX()
+//v, _ := m.readIndirectY()
+//v, n, _ := m.readAbsoluteXPenalized()
+//v, n, _ := m.readAbsoluteYPenalized()
+//v, n, _ := m.readIndirectYPenalized()
 
 //-----------------------------------------------------------------------------
 
@@ -225,7 +221,17 @@ func (m *M6502) opBranch(cond bool) uint {
 	return uint(cycles)
 }
 
-//-----------------------------------------------------------------------------
+func (m *M6502) opCompare(reg, val uint8) {
+	result := reg - val
+	m.P &= ^flagNZC
+	m.P |= result & flagN
+	if result == 0 {
+		m.P |= flagZ
+	}
+	if reg >= val {
+		m.P |= flagC
+	}
+}
 
 func (m *M6502) opADC(v uint8) {
 	c := m.P & flagC
@@ -260,6 +266,46 @@ func (m *M6502) opADC(v uint8) {
 			m.P |= flagV
 		}
 		if t>>8 != 0 {
+			m.P |= flagC
+		}
+		m.A = uint8(t)
+		m.setNZ(m.A)
+	}
+}
+
+func (m *M6502) opSBC(v uint8) {
+	c := ^(m.P & flagC)
+	t := uint(m.A - v - c)
+	if m.P&flagD != 0 {
+		l := uint((m.A & 0x0F) - (v & 0x0F) - c)
+		h := uint((m.A & 0xF0) - (v & 0xF0))
+		m.P &= ^flagNVZC
+		if l&0x10 != 0 {
+			l -= 6
+			h--
+		}
+		if (m.A^v)&(m.A^uint8(t))&0x80 != 0 {
+			m.P |= flagV
+		}
+		if t>>8 == 0 {
+			m.P |= flagC
+		}
+		if t<<8 == 0 {
+			m.P |= flagZ
+		}
+		if t&0x80 != 0 {
+			m.P |= flagN
+		}
+		if h&0x0100 != 0 {
+			h -= 0x60
+		}
+		m.A = uint8((l & 0x0F) | (h & 0xF0))
+	} else {
+		m.P &= ^flagVC
+		if (m.A^v)&(m.A^uint8(t))&0x80 != 0 {
+			m.P |= flagV
+		}
+		if t>>8 == 0 {
 			m.P |= flagC
 		}
 		m.A = uint8(t)
@@ -304,10 +350,10 @@ func op6D(m *M6502) uint {
 
 // op71, ADC add with carry, indirect Y-indexed
 func op71(m *M6502) uint {
-	panic("TODO")
-	// m.opADC(v)
+	v, n, _ := m.readIndirectYPenalized()
+	m.opADC(v)
 	m.PC += 2
-	return 5 // *
+	return 5 + n
 }
 
 // op75, ADC add with carry, zeropage X-indexed
@@ -320,18 +366,18 @@ func op75(m *M6502) uint {
 
 // op79, ADC add with carry, absolute Y-indexed
 func op79(m *M6502) uint {
-	panic("TODO")
-	// m.opADC(v)
+	v, n, _ := m.readAbsoluteYPenalized()
+	m.opADC(v)
 	m.PC += 3
-	return 4 // *
+	return 4 + n
 }
 
 // op7D, ADC add with carry, absolute X-indexed
 func op7D(m *M6502) uint {
-	panic("TODO")
-	// m.opADC(v)
+	v, n, _ := m.readAbsoluteXPenalized()
+	m.opADC(v)
 	m.PC += 3
-	return 4 // *
+	return 4 + n
 }
 
 // op21, AND and (with accumulator), X-indexed indirect
@@ -596,51 +642,66 @@ func opEC(m *M6502) uint {
 
 // opC0, CPY compare with Y, immediate
 func opC0(m *M6502) uint {
-	panic("TODO")
+	v := m.readImmediate()
+	m.opCompare(m.Y, v)
 	m.PC += 2
-	return 0
+	return 2
 }
 
 // opC4, CPY compare with Y, zeropage
 func opC4(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readZeroPage()
+	m.opCompare(m.Y, v)
 	m.PC += 2
-	return 0
+	return 3
 }
 
 // opCC, CPY compare with Y, absolute
 func opCC(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readAbsolute()
+	m.opCompare(m.Y, v)
 	m.PC += 3
-	return 0
+	return 4
 }
 
 // opC6, DEC decrement, zeropage
 func opC6(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readZeroPage()
+	v--
+	m.setNZ(v)
+	m.write8(ea, v)
 	m.PC += 2
-	return 0
+	return 5
 }
 
 // opCE, DEC decrement, absolute
 func opCE(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readAbsolute()
+	v--
+	m.setNZ(v)
+	m.write8(ea, v)
 	m.PC += 3
-	return 0
+	return 6
 }
 
 // opD6, DEC decrement, zeropage X-indexed
 func opD6(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readZeroPageX()
+	v--
+	m.setNZ(v)
+	m.write8(ea, v)
 	m.PC += 2
-	return 0
+	return 6
 }
 
 // opDE, DEC decrement, absolute X-indexed
 func opDE(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readAbsoluteX()
+	v--
+	m.setNZ(v)
+	m.write8(ea, v)
 	m.PC += 3
-	return 0
+	return 7
 }
 
 // opCA, DEX decrement X
@@ -718,35 +779,48 @@ func op5D(m *M6502) uint {
 // opXX, ILL illegal
 func opXX(m *M6502) uint {
 	m.illegal = true
+	m.PC++
 	return 0
 }
 
 // opE6, INC increment, zeropage
 func opE6(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readZeroPage()
+	v++
+	m.setNZ(v)
+	m.write8(ea, v)
 	m.PC += 2
-	return 0
+	return 5
 }
 
 // opEE, INC increment, absolute
 func opEE(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readAbsolute()
+	v++
+	m.setNZ(v)
+	m.write8(ea, v)
 	m.PC += 3
-	return 0
+	return 6
 }
 
 // opF6, INC increment, zeropage X-indexed
 func opF6(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readZeroPageX()
+	v++
+	m.setNZ(v)
+	m.write8(ea, v)
 	m.PC += 2
-	return 0
+	return 6
 }
 
 // opFE, INC increment, absolute X-indexed
 func opFE(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readAbsoluteX()
+	v++
+	m.setNZ(v)
+	m.write8(ea, v)
 	m.PC += 3
-	return 0
+	return 7
 }
 
 // opE8, INX increment X
@@ -786,7 +860,7 @@ func op20(m *M6502) uint {
 
 // opA1, LDA load accumulator, X-indexed indirect
 func opA1(m *M6502) uint {
-	panic("TODO")
+	m.A, _ = m.readIndirectX()
 	m.setNZ(m.A)
 	m.PC += 2
 	return 6
@@ -794,7 +868,7 @@ func opA1(m *M6502) uint {
 
 // opA5, LDA load accumulator, zeropage
 func opA5(m *M6502) uint {
-	panic("TODO")
+	m.A, _ = m.readZeroPage()
 	m.setNZ(m.A)
 	m.PC += 2
 	return 3
@@ -810,7 +884,7 @@ func opA9(m *M6502) uint {
 
 // opAD, LDA load accumulator, absolute
 func opAD(m *M6502) uint {
-	panic("TODO")
+	m.A, _ = m.readAbsolute()
 	m.setNZ(m.A)
 	m.PC += 3
 	return 4
@@ -818,15 +892,16 @@ func opAD(m *M6502) uint {
 
 // opB1, LDA load accumulator, indirect Y-indexed
 func opB1(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readIndirectYPenalized()
+	m.A = v
 	m.setNZ(m.A)
 	m.PC += 2
-	return 5 // *
+	return 5 + n
 }
 
 // opB5, LDA load accumulator, zeropage X-indexed
 func opB5(m *M6502) uint {
-	panic("TODO")
+	m.A, _ = m.readZeroPageX()
 	m.setNZ(m.A)
 	m.PC += 2
 	return 4
@@ -834,18 +909,20 @@ func opB5(m *M6502) uint {
 
 // opB9, LDA load accumulator, absolute Y-indexed
 func opB9(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readAbsoluteYPenalized()
+	m.A = v
 	m.setNZ(m.A)
 	m.PC += 3
-	return 4 // *
+	return 4 + n
 }
 
 // opBD, LDA load accumulator, absolute X-indexed
 func opBD(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readAbsoluteXPenalized()
+	m.A = v
 	m.setNZ(m.A)
 	m.PC += 3
-	return 4 // *
+	return 4 + n
 }
 
 // opA2, LDX load X, immediate
@@ -858,7 +935,7 @@ func opA2(m *M6502) uint {
 
 // opA6, LDX load X, zeropage
 func opA6(m *M6502) uint {
-	panic("TODO")
+	m.X, _ = m.readZeroPage()
 	m.setNZ(m.X)
 	m.PC += 2
 	return 3
@@ -866,7 +943,7 @@ func opA6(m *M6502) uint {
 
 // opAE, LDX load X, absolute
 func opAE(m *M6502) uint {
-	panic("TODO")
+	m.X, _ = m.readAbsolute()
 	m.setNZ(m.X)
 	m.PC += 3
 	return 4
@@ -874,7 +951,7 @@ func opAE(m *M6502) uint {
 
 // opB6, LDX load X, zeropage Y-indexed
 func opB6(m *M6502) uint {
-	panic("TODO")
+	m.X, _ = m.readZeroPageY()
 	m.setNZ(m.X)
 	m.PC += 2
 	return 4
@@ -882,45 +959,53 @@ func opB6(m *M6502) uint {
 
 // opBE, LDX load X, absolute Y-indexed
 func opBE(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readAbsoluteYPenalized()
+	m.X = v
 	m.setNZ(m.X)
 	m.PC += 3
-	return 4 // *
+	return 4 + n
 }
 
 // opA0, LDY load Y, immediate
 func opA0(m *M6502) uint {
-	panic("TODO")
+	v := m.readImmediate()
+	m.Y = v
+	m.setNZ(m.Y)
 	m.PC += 2
-	return 0
+	return 2
 }
 
 // opA4, LDY load Y, zeropage
 func opA4(m *M6502) uint {
-	panic("TODO")
+	m.Y, _ = m.readZeroPage()
+	m.setNZ(m.Y)
 	m.PC += 2
-	return 0
+	return 3
 }
 
 // opAC, LDY load Y, absolute
 func opAC(m *M6502) uint {
-	panic("TODO")
+	m.Y, _ = m.readAbsolute()
+	m.setNZ(m.Y)
 	m.PC += 3
-	return 0
+	return 4
 }
 
 // opB4, LDY load Y, zeropage X-indexed
 func opB4(m *M6502) uint {
-	panic("TODO")
+	m.Y, _ = m.readZeroPageX()
+	m.setNZ(m.Y)
 	m.PC += 2
-	return 0
+	return 4
 }
 
 // opBC, LDY load Y, absolute X-indexed
 func opBC(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readAbsoluteXPenalized()
+	m.Y = v
+	m.setNZ(m.Y)
 	m.PC += 3
-	return 0
+	return 4 + n
 }
 
 // op46, LSR logical shift right, zeropage
@@ -1134,58 +1219,66 @@ func op60(m *M6502) uint {
 
 // opE1, SBC subtract with carry, X-indexed indirect
 func opE1(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readIndirectX()
+	m.opSBC(v)
 	m.PC += 2
-	return 0
+	return 6
 }
 
 // opE5, SBC subtract with carry, zeropage
 func opE5(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readZeroPage()
+	m.opSBC(v)
 	m.PC += 2
-	return 0
+	return 3
 }
 
 // opE9, SBC subtract with carry, immediate
 func opE9(m *M6502) uint {
-	panic("TODO")
+	v := m.readImmediate()
+	m.opSBC(v)
 	m.PC += 2
-	return 0
+	return 2
 }
 
 // opED, SBC subtract with carry, absolute
 func opED(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readAbsolute()
+	m.opSBC(v)
 	m.PC += 3
-	return 0
+	return 4
 }
 
 // opF1, SBC subtract with carry, indirect Y-indexed
 func opF1(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readIndirectYPenalized()
+	m.opSBC(v)
 	m.PC += 2
-	return 0
+	return 5 + n
 }
 
 // opF5, SBC subtract with carry, zeropage X-indexed
 func opF5(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readZeroPageX()
+	m.opSBC(v)
 	m.PC += 2
-	return 0
+	return 4
 }
 
 // opF9, SBC subtract with carry, absolute Y-indexed
 func opF9(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readAbsoluteYPenalized()
+	m.opSBC(v)
 	m.PC += 3
-	return 0
+	return 4 + n
 }
 
 // opFD, SBC subtract with carry, absolute X-indexed
 func opFD(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readAbsoluteXPenalized()
+	m.opSBC(v)
 	m.PC += 3
-	return 0
+	return 4 + n
 }
 
 // op38, SEC set carry
@@ -1211,72 +1304,72 @@ func op78(m *M6502) uint {
 
 // op81, STA store accumulator, X-indexed indirect
 func op81(m *M6502) uint {
-	panic("TODO")
+	m.writeIndirectX(m.A)
 	m.PC += 2
-	return 0
+	return 6
 }
 
 // op85, STA store accumulator, zeropage
 func op85(m *M6502) uint {
-	panic("TODO")
+	m.writeZeroPage(m.A)
 	m.PC += 2
-	return 0
+	return 3
 }
 
 // op8D, STA store accumulator, absolute
 func op8D(m *M6502) uint {
-	panic("TODO")
+	m.writeAbsolute(m.A)
 	m.PC += 3
-	return 0
+	return 4
 }
 
 // op91, STA store accumulator, indirect Y-indexed
 func op91(m *M6502) uint {
-	panic("TODO")
+	m.writeIndirectY(m.A)
 	m.PC += 2
-	return 0
+	return 6
 }
 
 // op95, STA store accumulator, zeropage X-indexed
 func op95(m *M6502) uint {
-	panic("TODO")
+	m.writeZeroPageX(m.A)
 	m.PC += 2
-	return 0
+	return 4
 }
 
 // op99, STA store accumulator, absolute Y-indexed
 func op99(m *M6502) uint {
-	panic("TODO")
+	m.writeAbsoluteY(m.A)
 	m.PC += 3
-	return 0
+	return 5
 }
 
 // op9D, STA store accumulator, absolute X-indexed
 func op9D(m *M6502) uint {
-	panic("TODO")
+	m.writeAbsoluteX(m.A)
 	m.PC += 3
-	return 0
+	return 5
 }
 
 // op86, STX store X, zeropage
 func op86(m *M6502) uint {
-	panic("TODO")
+	m.writeZeroPage(m.X)
 	m.PC += 2
-	return 0
+	return 3
 }
 
 // op8E, STX store X, absolute
 func op8E(m *M6502) uint {
-	panic("TODO")
+	m.writeAbsolute(m.X)
 	m.PC += 3
-	return 0
+	return 4
 }
 
 // op96, STX store X, zeropage Y-indexed
 func op96(m *M6502) uint {
-	panic("TODO")
+	m.writeZeroPageY(m.X)
 	m.PC += 2
-	return 0
+	return 4
 }
 
 // op84, STY store Y, zeropage

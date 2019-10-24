@@ -40,11 +40,20 @@ type M6502 struct {
 	mem     Memory // memory of the target system
 }
 
-const NmiAddress = 0xFFFA // non maskable interrupt
-const RstAddress = 0XFFFC // reset
-const IrqAddress = 0xFFFE // interrupt request
-const BrkAddress = 0xFFFE // break
-const stkAddress = 0x0100 // stack
+// NmiAddress is the non-maskable interrupt address
+const NmiAddress = 0xFFFA
+
+// RstAddress is the reset address
+const RstAddress = 0XFFFC
+
+// IrqAddress is the interrupt request address
+const IrqAddress = 0xFFFE
+
+// BrkAddress is the break address
+const BrkAddress = 0xFFFE
+
+// stkAddress is the stack address
+const stkAddress = 0x0100
 
 const initialPC = 0x0000
 const initialS = 0xFD
@@ -64,8 +73,10 @@ const flagI = uint8(1 << 2) // Interrupt Disable
 const flagZ = uint8(1 << 1) // Zero
 const flagC = uint8(1 << 0) // Carry
 
+const flagVC = (flagV | flagC)
 const flagNZ = (flagN | flagZ)
 const flagNZC = (flagN | flagZ | flagC)
+const flagNVZC = (flagN | flagV | flagZ | flagC)
 
 //-----------------------------------------------------------------------------
 // address modes

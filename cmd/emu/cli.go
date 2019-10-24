@@ -103,90 +103,9 @@ var cmdMemDisplay = cli.Leaf{
 	},
 }
 
-var cmdMemToFile = cli.Leaf{
-	Descr: "read from memory, write to file",
-	F: func(c *cli.CLI, args []string) {
-	},
-}
-
-var cmdMemFromFile = cli.Leaf{
-	Descr: "read from file, write to memory",
-	F: func(c *cli.CLI, args []string) {
-		//c.Exit()
-	},
-}
-
-var cmdMemRead8 = cli.Leaf{
-	Descr: "read 8 bits",
-	F: func(c *cli.CLI, args []string) {
-		//c.Exit()
-	},
-}
-
-var cmdMemRead16 = cli.Leaf{
-	Descr: "read 16 bits",
-	F: func(c *cli.CLI, args []string) {
-		//c.Exit()
-	},
-}
-
-var cmdMemWrite8 = cli.Leaf{
-	Descr: "write 8 bits",
-	F: func(c *cli.CLI, args []string) {
-		//c.Exit()
-	},
-}
-
-var cmdMemWrite16 = cli.Leaf{
-	Descr: "write 16 bits",
-	F: func(c *cli.CLI, args []string) {
-		//c.Exit()
-	},
-}
-
-var cmdMemVerify = cli.Leaf{
-	Descr: "verify memory against file",
-	F: func(c *cli.CLI, args []string) {
-		//c.Exit()
-	},
-}
-
 var helpMemDisplay = []cli.Help{
 	{"<adr> [len]", "address (hex)"},
 	{"", "length (hex) - default is 0x40"},
-}
-
-var helpMemToFile = []cli.Help{
-	{"<adr> <len> [file]", "address (hex)"},
-	{"", "length (hex)"},
-	{"", "filename - default is \"mem.bin\""},
-}
-
-var helpMemFromFile = []cli.Help{
-	{"<adr> [file] [len]", "address (hex)"},
-	{"", "filename - default is \"mem.bin\""},
-	{"", "length (hex) - default is file length"},
-}
-
-var helpMemRead = []cli.Help{
-	{"<adr>", "address (hex)"},
-}
-
-var helpMemWrite = []cli.Help{
-	{"<adr> <val>", "address (hex)"},
-	{"", "value (hex)"},
-}
-
-// memory submenu items
-var memoryMenu = cli.Menu{
-	{"display", cmdMemDisplay, helpMemDisplay},
-	{">file", cmdMemToFile, helpMemToFile},
-	{"<file", cmdMemFromFile, helpMemFromFile},
-	{"r8", cmdMemRead8, helpMemRead},
-	{"r16", cmdMemRead16, helpMemRead},
-	{"verify", cmdMemVerify, helpMemToFile},
-	{"w8", cmdMemWrite8, helpMemWrite},
-	{"w16", cmdMemWrite16, helpMemWrite},
 }
 
 //-----------------------------------------------------------------------------
@@ -237,10 +156,15 @@ var cmdRegisters = cli.Leaf{
 	},
 }
 
-var cmdRun = cli.Leaf{
+var cmdGo = cli.Leaf{
 	Descr: "run the emulation",
 	F: func(c *cli.CLI, args []string) {
-		//c.Exit()
+		m := c.User.(*userApp).cpu
+		for true {
+			s := m.Disassemble(m.PC, 1)
+			m.Run(1)
+			c.User.Put(fmt.Sprintf("%s\n", s))
+		}
 	},
 }
 
@@ -251,6 +175,20 @@ var cmdStep = cli.Leaf{
 		s := m.Disassemble(m.PC, 1)
 		m.Run(1)
 		c.User.Put(fmt.Sprintf("%s\n", s))
+	},
+}
+
+var cmdZeroPage = cli.Leaf{
+	Descr: "show the zero page memory",
+	F: func(c *cli.CLI, args []string) {
+		cmdMemDisplay.F(c, []string{"0", "100"})
+	},
+}
+
+var cmdStack = cli.Leaf{
+	Descr: "show the stack memory",
+	F: func(c *cli.CLI, args []string) {
+		cmdMemDisplay.F(c, []string{"100", "100"})
 	},
 }
 
@@ -265,12 +203,14 @@ var helpDisassemble = []cli.Help{
 var menuRoot = cli.Menu{
 	{"da", cmdDisassemble, helpDisassemble},
 	{"exit", cmdExit},
+	{"go", cmdGo},
 	{"help", cmdHelp},
 	{"history", cmdHistory, cli.HistoryHelp},
-	{"memory", memoryMenu, "memory functions"},
+	{"md", cmdMemDisplay, helpMemDisplay},
 	{"regs", cmdRegisters},
-	{"run", cmdRun},
+	{"stack", cmdStack},
 	{"step", cmdStep},
+	{"zp", cmdZeroPage},
 }
 
 //-----------------------------------------------------------------------------
