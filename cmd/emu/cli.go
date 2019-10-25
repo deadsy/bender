@@ -161,9 +161,13 @@ var cmdGo = cli.Leaf{
 	F: func(c *cli.CLI, args []string) {
 		m := c.User.(*userApp).cpu
 		for true {
-			//s := m.Disassemble(m.PC, 1)
-			m.Run(1)
-			//c.User.Put(fmt.Sprintf("%s\n", s))
+			s := m.Disassemble(m.PC, 1)
+			err := m.Run()
+			c.User.Put(fmt.Sprintf("%s\n", s))
+			if err != nil {
+				c.User.Put(fmt.Sprintf("%s\n", err))
+				break
+			}
 		}
 	},
 }
@@ -173,8 +177,11 @@ var cmdStep = cli.Leaf{
 	F: func(c *cli.CLI, args []string) {
 		m := c.User.(*userApp).cpu
 		s := m.Disassemble(m.PC, 1)
-		m.Run(1)
+		err := m.Run()
 		c.User.Put(fmt.Sprintf("%s\n", s))
+		if err != nil {
+			c.User.Put(fmt.Sprintf("%s\n", err))
+		}
 	},
 }
 

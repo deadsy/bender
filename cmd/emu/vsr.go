@@ -64,8 +64,9 @@ func vsrWrite(m *cpu.M6502) {
 func vsrArgs(m *cpu.M6502) {
 	fmt.Printf("*** vsrArgs ***\n")
 }
+
 func vsrExit(m *cpu.M6502) {
-	fmt.Printf("*** vsrExit ***\n")
+	m.Exit(0)
 }
 
 //-----------------------------------------------------------------------------

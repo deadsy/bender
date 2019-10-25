@@ -8,6 +8,8 @@
 
 package cpu
 
+import "fmt"
+
 //-----------------------------------------------------------------------------
 
 func (m *M6502) setN(val uint8) {
@@ -809,7 +811,6 @@ func op5D(m *M6502) uint {
 // opXX, ILL illegal
 func opXX(m *M6502) uint {
 	m.illegal = true
-	m.PC++
 	return 0
 }
 
@@ -872,12 +873,14 @@ func opC8(m *M6502) uint {
 // op4C, JMP jump, absolute
 func op4C(m *M6502) uint {
 	m.PC = m.read16(m.PC + 1)
+	m.jmpVSR()
 	return 3
 }
 
 // op6C, JMP jump, indirect
 func op6C(m *M6502) uint {
 	m.PC = m.read16(m.read16(m.PC + 1))
+	m.jmpVSR()
 	return 5
 }
 
@@ -1545,41 +1548,42 @@ func (m *M6502) IRQ(state bool) {
 	m.irq = state
 }
 
-// Run the 6502 CPU for a number of clock cycles.
-func (m *M6502) Run(cycles uint) uint {
+// Run the 6502 CPU for a single instruction.
+func (m *M6502) Run() error {
+	// nmi handling
+	if m.nmi {
+		m.nmi = false
+		m.P &= ^flagB
+		m.push16(m.PC)
+		m.push8(m.P)
+		m.PC = m.read16(NmiAddress)
+		m.P |= flagI
+		m.cycles += 7
+		return nil
+	}
+	// irq handling
+	if m.irq && (m.P&flagI == 0) {
+		m.P &= ^flagB
+		m.push16(m.PC)
+		m.push8(m.P)
+		m.PC = m.read16(IrqAddress)
+		m.P |= flagI
+		m.cycles += 7
+		return nil
+	}
+	// normal instructions
+	op := m.Mem.Read8(m.PC)
+	m.cycles += opcodeTable[op](m)
 
-	var clks uint
-
-	for clks < cycles {
-
-		// nmi handling
-		if m.nmi {
-			m.nmi = false               // clear the nmi
-			m.P &= ^flagB               // clear the break flag
-			m.push16(m.PC)              // save return addres in the stack.
-			m.push8(m.P)                // save current status in the stack.
-			m.PC = m.read16(NmiAddress) // make PC point to the NMI routine.
-			m.P |= flagI                // disable interrupts
-			clks += 7                   // accepting an NMI consumes 7 ticks.
-			continue
-		}
-
-		// irq handling
-		if m.irq && (m.P&flagI == 0) {
-			m.P &= ^flagB
-			m.push16(m.PC)
-			m.push8(m.P)
-			m.PC = m.read16(IrqAddress)
-			m.P |= flagI
-			clks += 7
-			continue
-		}
-
-		op := m.Mem.Read8(m.PC)
-		clks += opcodeTable[op](m)
+	if m.illegal {
+		return fmt.Errorf("illegal instruction at %04x", m.PC)
 	}
 
-	return clks
+	if m.exit {
+		return fmt.Errorf("exit at %04x, status %02x, %d cpu cycles", m.PC, m.A, m.cycles)
+	}
+
+	return nil
 }
 
 // ReadPC returns the 6502 program counter.
@@ -1587,8 +1591,24 @@ func (m *M6502) ReadPC() uint16 {
 	return m.PC
 }
 
+// Exit sets a status code and exits the emulation
+func (m *M6502) Exit(status uint8) {
+	m.A = status
+	m.exit = true
+}
+
 //-----------------------------------------------------------------------------
-// virtual subroutines
+// virtual JSR/JMP subroutines
+
+func (m *M6502) jmpVSR() {
+	if m.vsr != nil {
+		if fn, ok := m.vsr[m.PC]; ok {
+			// call the hook
+			fn(m)
+			// called by a jump: we don't have anywhere to go...
+		}
+	}
+}
 
 func (m *M6502) callVSR() {
 	if m.vsr != nil {
