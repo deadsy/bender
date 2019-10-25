@@ -37,10 +37,10 @@ type M6502 struct {
 	A       uint8              // accumulator
 	X       uint8              // x index
 	Y       uint8              // y index
+	Mem     Memory             // memory of the target system
 	nmi     bool               // nmi state
 	irq     bool               // irq state
 	illegal bool               // illegal instruction state
-	mem     Memory             // memory of the target system
 	vsr     map[uint16]VSRFunc // virtual subroutines
 }
 

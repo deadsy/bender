@@ -22,45 +22,31 @@ func (m *M6502) setNZ(val uint8) {
 
 //-----------------------------------------------------------------------------
 
-func (m *M6502) read8(adr uint16) uint8 {
-	return m.mem.Read8(adr)
-}
-
 func (m *M6502) read16(adr uint16) uint16 {
-	l := uint16(m.mem.Read8(adr))
-	h := uint16(m.mem.Read8(adr + 1))
+	l := uint16(m.Mem.Read8(adr))
+	h := uint16(m.Mem.Read8(adr + 1))
 	return (h << 8) | l
 }
 
-func (m *M6502) readPointer(adr uint16) uint16 {
-	return m.read16(adr)
-}
-
-func (m *M6502) write8(adr uint16, val uint8) {
-	m.mem.Write8(adr, val)
-}
-
-//-----------------------------------------------------------------------------
-
 func (m *M6502) push8(val uint8) {
-	m.mem.Write8(stkAddress+uint16(m.S), val)
+	m.Mem.Write8(stkAddress+uint16(m.S), val)
 	m.S--
 }
 
 func (m *M6502) pop8() uint8 {
 	m.S++
-	return m.mem.Read8(stkAddress + uint16(m.S))
+	return m.Mem.Read8(stkAddress + uint16(m.S))
 }
 
 func (m *M6502) push16(val uint16) {
-	m.mem.Write8(stkAddress+uint16(m.S), uint8(val>>8))
-	m.mem.Write8(stkAddress+uint16(m.S-1), uint8(val))
+	m.Mem.Write8(stkAddress+uint16(m.S), uint8(val>>8))
+	m.Mem.Write8(stkAddress+uint16(m.S-1), uint8(val))
 	m.S -= 2
 }
 
 func (m *M6502) pop16() uint16 {
-	l := uint16(m.mem.Read8(stkAddress + uint16(m.S+1)))
-	h := uint16(m.mem.Read8(stkAddress + uint16(m.S+2)))
+	l := uint16(m.Mem.Read8(stkAddress + uint16(m.S+1)))
+	h := uint16(m.Mem.Read8(stkAddress + uint16(m.S+2)))
 	m.S += 2
 	return (h << 8) | l
 }
@@ -69,90 +55,90 @@ func (m *M6502) pop16() uint16 {
 // address mode write functions
 
 func (m *M6502) writeZeroPage(val uint8) {
-	ea := m.read8(m.PC + 1)
-	m.write8(uint16(ea), val)
+	ea := m.Mem.Read8(m.PC + 1)
+	m.Mem.Write8(uint16(ea), val)
 }
 
 func (m *M6502) writeZeroPageX(val uint8) {
-	ea := m.read8(m.PC+1) + m.X
-	m.write8(uint16(ea), val)
+	ea := m.Mem.Read8(m.PC+1) + m.X
+	m.Mem.Write8(uint16(ea), val)
 }
 
 func (m *M6502) writeZeroPageY(val uint8) {
-	ea := m.read8(m.PC+1) + m.Y
-	m.write8(uint16(ea), val)
+	ea := m.Mem.Read8(m.PC+1) + m.Y
+	m.Mem.Write8(uint16(ea), val)
 }
 
 func (m *M6502) writeAbsolute(val uint8) {
 	ea := m.read16(m.PC + 1)
-	m.write8(ea, val)
+	m.Mem.Write8(ea, val)
 }
 
 func (m *M6502) writeAbsoluteX(val uint8) {
 	ea := m.read16(m.PC+1) + uint16(m.X)
-	m.write8(ea, val)
+	m.Mem.Write8(ea, val)
 }
 
 func (m *M6502) writeAbsoluteY(val uint8) {
 	ea := m.read16(m.PC+1) + uint16(m.Y)
-	m.write8(ea, val)
+	m.Mem.Write8(ea, val)
 }
 
 func (m *M6502) writeIndirectX(val uint8) {
-	ea := m.read16(uint16(m.read8(m.PC+1) + m.X))
-	m.write8(ea, val)
+	ea := m.read16(uint16(m.Mem.Read8(m.PC+1) + m.X))
+	m.Mem.Write8(ea, val)
 }
 
 func (m *M6502) writeIndirectY(val uint8) {
-	ea := m.read16(uint16(m.read8(m.PC+1))) + uint16(m.Y)
-	m.write8(ea, val)
+	ea := m.read16(uint16(m.Mem.Read8(m.PC+1))) + uint16(m.Y)
+	m.Mem.Write8(ea, val)
 }
 
 //-----------------------------------------------------------------------------
 // address mode read functions
 
 func (m *M6502) readImmediate() uint8 {
-	return m.read8(m.PC + 1)
+	return m.Mem.Read8(m.PC + 1)
 }
 
 func (m *M6502) readZeroPage() (uint8, uint16) {
-	ea := uint16(m.read8(m.PC + 1))
-	return m.read8(ea), ea
+	ea := uint16(m.Mem.Read8(m.PC + 1))
+	return m.Mem.Read8(ea), ea
 }
 
 func (m *M6502) readZeroPageX() (uint8, uint16) {
-	ea := uint16(m.read8(m.PC+1) + m.X)
-	return m.read8(ea), ea
+	ea := uint16(m.Mem.Read8(m.PC+1) + m.X)
+	return m.Mem.Read8(ea), ea
 }
 
 func (m *M6502) readZeroPageY() (uint8, uint16) {
-	ea := uint16(m.read8(m.PC+1) + m.Y)
-	return m.read8(ea), ea
+	ea := uint16(m.Mem.Read8(m.PC+1) + m.Y)
+	return m.Mem.Read8(ea), ea
 }
 
 func (m *M6502) readAbsolute() (uint8, uint16) {
 	ea := m.read16(m.PC + 1)
-	return m.read8(ea), ea
+	return m.Mem.Read8(ea), ea
 }
 
 func (m *M6502) readAbsoluteX() (uint8, uint16) {
 	ea := m.read16(m.PC+1) + uint16(m.X)
-	return m.read8(ea), ea
+	return m.Mem.Read8(ea), ea
 }
 
 func (m *M6502) readAbsoluteY() (uint8, uint16) {
 	ea := m.read16(m.PC+1) + uint16(m.Y)
-	return m.read8(ea), ea
+	return m.Mem.Read8(ea), ea
 }
 
 func (m *M6502) readIndirectX() (uint8, uint16) {
-	ea := m.read16(uint16(m.read8(m.PC+1) + m.X))
-	return m.read8(ea), ea
+	ea := m.read16(uint16(m.Mem.Read8(m.PC+1) + m.X))
+	return m.Mem.Read8(ea), ea
 }
 
 func (m *M6502) readIndirectY() (uint8, uint16) {
-	ea := m.read16(uint16(m.read8(m.PC+1))) + uint16(m.Y)
-	return m.read8(ea), ea
+	ea := m.read16(uint16(m.Mem.Read8(m.PC+1))) + uint16(m.Y)
+	return m.Mem.Read8(ea), ea
 }
 
 func (m *M6502) readAbsoluteXPenalized() (uint8, uint, uint16) {
@@ -162,7 +148,7 @@ func (m *M6502) readAbsoluteXPenalized() (uint8, uint, uint16) {
 		n = 1
 	}
 	ea += uint16(m.X)
-	return m.read8(ea), n, ea
+	return m.Mem.Read8(ea), n, ea
 }
 
 func (m *M6502) readAbsoluteYPenalized() (uint8, uint, uint16) {
@@ -172,17 +158,17 @@ func (m *M6502) readAbsoluteYPenalized() (uint8, uint, uint16) {
 		n = 1
 	}
 	ea += uint16(m.Y)
-	return m.read8(ea), n, ea
+	return m.Mem.Read8(ea), n, ea
 }
 
 func (m *M6502) readIndirectYPenalized() (uint8, uint, uint16) {
-	ea := m.read16(uint16(m.read8(m.PC + 1)))
+	ea := m.read16(uint16(m.Mem.Read8(m.PC + 1)))
 	n := uint(0)
 	if (ea&0xff)+uint16(m.Y) > 0xff {
 		n = 1
 	}
 	ea += uint16(m.Y)
-	return m.read8(ea), n, ea
+	return m.Mem.Read8(ea), n, ea
 }
 
 //v := m.readImmediate()
@@ -205,7 +191,7 @@ func (m *M6502) opBranch(cond bool) uint {
 	cycles := 2
 	if cond {
 		pc := m.PC + 2
-		ofs := int8(m.read8(m.PC + 1))
+		ofs := int8(m.Mem.Read8(m.PC + 1))
 		tgt := uint16(int(pc) + int(ofs))
 		if (tgt >> 8) == (pc >> 8) {
 			// same page: +1 cycle
@@ -517,11 +503,11 @@ func op10(m *M6502) uint {
 
 // op00, BRK break/interrupt
 func op00(m *M6502) uint {
-	m.read8(m.PC + 1)
+	m.Mem.Read8(m.PC + 1)
 	m.push16(m.PC + 2)
 	m.push8(m.P | flagB)
 	m.P |= flagB | flagI
-	m.PC = m.readPointer(BrkAddress)
+	m.PC = m.read16(BrkAddress)
 	return 7
 }
 
@@ -669,7 +655,7 @@ func opC6(m *M6502) uint {
 	v, ea := m.readZeroPage()
 	v--
 	m.setNZ(v)
-	m.write8(ea, v)
+	m.Mem.Write8(ea, v)
 	m.PC += 2
 	return 5
 }
@@ -679,7 +665,7 @@ func opCE(m *M6502) uint {
 	v, ea := m.readAbsolute()
 	v--
 	m.setNZ(v)
-	m.write8(ea, v)
+	m.Mem.Write8(ea, v)
 	m.PC += 3
 	return 6
 }
@@ -689,7 +675,7 @@ func opD6(m *M6502) uint {
 	v, ea := m.readZeroPageX()
 	v--
 	m.setNZ(v)
-	m.write8(ea, v)
+	m.Mem.Write8(ea, v)
 	m.PC += 2
 	return 6
 }
@@ -699,7 +685,7 @@ func opDE(m *M6502) uint {
 	v, ea := m.readAbsoluteX()
 	v--
 	m.setNZ(v)
-	m.write8(ea, v)
+	m.Mem.Write8(ea, v)
 	m.PC += 3
 	return 7
 }
@@ -788,7 +774,7 @@ func opE6(m *M6502) uint {
 	v, ea := m.readZeroPage()
 	v++
 	m.setNZ(v)
-	m.write8(ea, v)
+	m.Mem.Write8(ea, v)
 	m.PC += 2
 	return 5
 }
@@ -798,7 +784,7 @@ func opEE(m *M6502) uint {
 	v, ea := m.readAbsolute()
 	v++
 	m.setNZ(v)
-	m.write8(ea, v)
+	m.Mem.Write8(ea, v)
 	m.PC += 3
 	return 6
 }
@@ -808,7 +794,7 @@ func opF6(m *M6502) uint {
 	v, ea := m.readZeroPageX()
 	v++
 	m.setNZ(v)
-	m.write8(ea, v)
+	m.Mem.Write8(ea, v)
 	m.PC += 2
 	return 6
 }
@@ -818,7 +804,7 @@ func opFE(m *M6502) uint {
 	v, ea := m.readAbsoluteX()
 	v++
 	m.setNZ(v)
-	m.write8(ea, v)
+	m.Mem.Write8(ea, v)
 	m.PC += 3
 	return 7
 }
@@ -1467,7 +1453,7 @@ var opcodeTable = [256]opFunc{
 // New6502 returns a 6502 CPU in the powered-on and reset state.
 func New6502(mem Memory) *M6502 {
 	var m M6502
-	m.mem = mem
+	m.Mem = mem
 	m.Power(true)
 	m.Reset()
 	return &m
@@ -1498,7 +1484,7 @@ func (m *M6502) Power(state bool) {
 
 // Reset the 6502 CPU.
 func (m *M6502) Reset() {
-	m.PC = m.readPointer(RstAddress)
+	m.PC = m.read16(RstAddress)
 	m.S = initialS
 	m.P = initialP
 	m.irq = false
@@ -1524,13 +1510,13 @@ func (m *M6502) Run(cycles uint) uint {
 
 		// nmi handling
 		if m.nmi {
-			m.nmi = false                    // clear the nmi
-			m.P &= ^flagB                    // clear the break flag
-			m.push16(m.PC)                   // save return addres in the stack.
-			m.push8(m.P)                     // save current status in the stack.
-			m.PC = m.readPointer(NmiAddress) // make PC point to the NMI routine.
-			m.P |= flagI                     // disable interrupts
-			clks += 7                        // accepting an NMI consumes 7 ticks.
+			m.nmi = false               // clear the nmi
+			m.P &= ^flagB               // clear the break flag
+			m.push16(m.PC)              // save return addres in the stack.
+			m.push8(m.P)                // save current status in the stack.
+			m.PC = m.read16(NmiAddress) // make PC point to the NMI routine.
+			m.P |= flagI                // disable interrupts
+			clks += 7                   // accepting an NMI consumes 7 ticks.
 			continue
 		}
 
@@ -1539,13 +1525,13 @@ func (m *M6502) Run(cycles uint) uint {
 			m.P &= ^flagB
 			m.push16(m.PC)
 			m.push8(m.P)
-			m.PC = m.readPointer(IrqAddress)
+			m.PC = m.read16(IrqAddress)
 			m.P |= flagI
 			clks += 7
 			continue
 		}
 
-		op := m.read8(m.PC)
+		op := m.Mem.Read8(m.PC)
 		clks += opcodeTable[op](m)
 	}
 

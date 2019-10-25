@@ -152,7 +152,7 @@ func Disassemble(m Memory, adr uint16, st SymbolTable) *Disassembly {
 func (m *M6502) Disassemble(adr uint16, size int) string {
 	s := make([]string, 0, 16)
 	for size > 0 {
-		da := Disassemble(m.mem, adr, nil)
+		da := Disassemble(m.Mem, adr, nil)
 		s = append(s, da.String())
 		n := len(da.Bytes)
 		size -= n

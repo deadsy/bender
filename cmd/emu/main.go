@@ -26,7 +26,8 @@ const historyPath = "history.txt"
 // target memory
 
 type memory struct {
-	ram [64 << 10]uint8
+	ram   [64 << 10]uint8
+	spAdr uint16
 }
 
 // Read8 reads a byte from memory.
@@ -37,6 +38,17 @@ func (m *memory) Read8(adr uint16) uint8 {
 // Write8 writes a byte to memory.
 func (m *memory) Write8(adr uint16, val uint8) {
 	m.ram[adr] = val
+}
+
+func (m *memory) read16(adr uint16) uint16 {
+	l := uint16(m.Read8(adr))
+	h := uint16(m.Read8(adr + 1))
+	return (h << 8) | l
+}
+
+func (m *memory) write16(adr uint16, val uint16) {
+	m.Write8(adr, uint8(val))
+	m.Write8(adr+1, uint8(val>>8))
 }
 
 func newMemory() *memory {
@@ -68,6 +80,9 @@ func (m *memory) Load(filename string) (string, error) {
 		return "", fmt.Errorf("%s: bad cpu type", filename)
 	}
 
+	// zero page stack pointer address (virtual subroutine abi)
+	m.spAdr = uint16(x[7])
+
 	// copy the code to the load address
 	loadAdr := uint16(x[8]) | (uint16(x[9]) << 8)
 	for i, v := range x[12:] {
@@ -77,31 +92,9 @@ func (m *memory) Load(filename string) (string, error) {
 
 	// setup the reset address
 	rstAdr := uint16(x[10]) | (uint16(x[11]) << 8)
-	m.Write8(cpu.RstAddress+0, x[10])
-	m.Write8(cpu.RstAddress+1, x[11])
+	m.write16(cpu.RstAddress, rstAdr)
 
-	return fmt.Sprintf("%s code %04x-%04x reset %04x", filename, loadAdr, endAdr, rstAdr), nil
-}
-
-//-----------------------------------------------------------------------------
-
-func vsrOpen(m *cpu.M6502) {
-	fmt.Printf("*** vsrOpen ***\n")
-}
-func vsrClose(m *cpu.M6502) {
-	fmt.Printf("*** vsrClose ***\n")
-}
-func vsrRead(m *cpu.M6502) {
-	fmt.Printf("*** vsrRead ***\n")
-}
-func vsrWrite(m *cpu.M6502) {
-	fmt.Printf("*** vsrWrite ***\n")
-}
-func vsrArgs(m *cpu.M6502) {
-	fmt.Printf("*** vsrArgs ***\n")
-}
-func vsrExit(m *cpu.M6502) {
-	fmt.Printf("*** vsrExit ***\n")
+	return fmt.Sprintf("%s code %04x-%04x reset %04x sp %04x", filename, loadAdr, endAdr, rstAdr, m.spAdr), nil
 }
 
 //-----------------------------------------------------------------------------
