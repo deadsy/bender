@@ -80,6 +80,7 @@ const flagC = uint8(1 << 0) // Carry
 const flagVC = (flagV | flagC)
 const flagNZ = (flagN | flagZ)
 const flagNZC = (flagN | flagZ | flagC)
+const flagNVZ = (flagN | flagV | flagZ)
 const flagNVZC = (flagN | flagV | flagZ | flagC)
 
 //-----------------------------------------------------------------------------
@@ -486,8 +487,8 @@ func toBits(x uint8) string {
 // Dump returns a display string for the CPU registers.
 func (m *M6502) Dump() string {
 	s := make([]string, 2)
-	s[0] = fmt.Sprintf("pc   a  x  y  p  s    n v - b d i z c")
-	s[1] = fmt.Sprintf("%04x %02x %02x %02x %02x %02x   %s", m.PC, m.A, m.X, m.Y, m.P, m.S, toBits(m.P))
+	s[0] = fmt.Sprintf("pc   a  x  y  s  p    n v - b d i z c")
+	s[1] = fmt.Sprintf("%04x %02x %02x %02x %02x %02x   %s", m.PC, m.A, m.X, m.Y, m.S, m.P, toBits(m.P))
 	return strings.Join(s, "\n")
 }
 

@@ -10,14 +10,33 @@ package cpu
 
 //-----------------------------------------------------------------------------
 
-func (m *M6502) setNZ(val uint8) {
-	var flags uint8
-	if val != 0 {
-		flags = val & flagN
+func (m *M6502) setN(val uint8) {
+	if val&0x80 != 0 {
+		m.P |= flagN
 	} else {
-		flags = flagZ
+		m.P &= ^flagN
 	}
-	m.P = (m.P &^ flagNZ) | flags
+}
+
+func (m *M6502) setZ(val uint8) {
+	if val == 0 {
+		m.P |= flagZ
+	} else {
+		m.P &= ^flagZ
+	}
+}
+
+func (m *M6502) setC(val uint) {
+	if val>>8 != 0 {
+		m.P |= flagC
+	} else {
+		m.P &= ^flagC
+	}
+}
+
+func (m *M6502) setNZ(val uint8) {
+	m.setN(val)
+	m.setZ(val)
 }
 
 //-----------------------------------------------------------------------------
@@ -93,6 +112,15 @@ func (m *M6502) writeIndirectY(val uint8) {
 	ea := m.read16(uint16(m.Mem.Read8(m.PC+1))) + uint16(m.Y)
 	m.Mem.Write8(ea, val)
 }
+
+//m.writeZeroPage(m.?)
+//m.writeZeroPageX(m.?)
+//m.writeZeroPageY(m.?)
+//m.writeAbsolute(m.?)
+//m.writeAbsoluteX(m.?)
+//m.writeAbsoluteY(m.?)
+//m.writeIndirectX(m.?)
+//m.writeIndirectY(m.?)
 
 //-----------------------------------------------------------------------------
 // address mode read functions
@@ -190,7 +218,7 @@ func (m *M6502) readIndirectYPenalized() (uint8, uint, uint16) {
 func (m *M6502) opBranch(cond bool) uint {
 	cycles := 2
 	if cond {
-		pc := m.PC + 2
+		pc := uint16(m.PC + 2)
 		ofs := int8(m.Mem.Read8(m.PC + 1))
 		tgt := uint16(int(pc) + int(ofs))
 		if (tgt >> 8) == (pc >> 8) {
@@ -220,82 +248,85 @@ func (m *M6502) opCompare(reg, val uint8) {
 }
 
 func (m *M6502) opADC(v uint8) {
-	c := m.P & flagC
+
+	a := uint(m.A)
+	old := a
+	rhs := uint(v)
+
+	var c uint
+	if m.P&flagC != 0 {
+		c = 1
+	}
+
 	if m.P&flagD != 0 {
-		l := uint(m.A&0x0F) + uint(v&0x0F) + uint(c)
-		h := uint(m.A&0xF0) + uint(v&0xF0)
-		m.P &= ^(flagV | flagC | flagN | flagZ)
-		if (l+h)&0xFF == 0 {
-			m.P |= flagZ
-		}
-		if l > 0x09 {
-			h += 0x10
-			l += 0x06
-		}
-		if h&0x80 != 0 {
-			m.P |= flagN
-		}
-		if ^(m.A^v)&(m.A^uint8(h))&0x80 != 0 {
-			m.P |= flagV
-		}
-		if h > 0x90 {
-			h += 0x60
-		}
-		if h>>8 != 0 {
-			m.P |= flagC
-		}
-		m.A = uint8(l&0x0F) | uint8(h&0xF0)
+
+		panic("TODO: bcd")
+
+		/*
+
+			lo := (old & 0x0F) + (rhs & 0x0F) + c
+			if lo >= 0x0A {
+				lo = ((lo + 0x06) & 0x0F) + 0x10
+			}
+			a = (old & 0xF0) + (rhs & 0xF0) + lo
+			// overflow
+			res := int(old&0xF0) + int(rhs&0xF0) + int(lo)
+			if (res < -128) || (res > 127) {
+				m.P |= flagV
+			} else {
+				m.P &= ^flagV
+			}
+			// zero
+			if (old+rhs+c)&0xff == 0 {
+				m.P |= flagZ
+			} else {
+				m.P &= ^flagZ
+			}
+			// negative
+			m.setN(uint8(a))
+			if a >= 0xA0 {
+				a += 0x60
+			}
+			// carry
+			m.setC(a)
+			m.A = uint8(a)
+
+		*/
+
 	} else {
-		t := uint(m.A) + uint(v) + uint(c)
-		m.P &= ^(flagV | flagC)
-		if ^(m.A^v)&(m.A^uint8(t))&0x80 != 0 {
+		a += rhs + c
+		m.A = uint8(a)
+		// carry
+		m.setC(a)
+		// overflow
+		if (((old ^ rhs) & 0x80) == 0) && (((old ^ a) & 0x80) != 0) {
 			m.P |= flagV
+		} else {
+			m.P &= ^flagV
 		}
-		if t>>8 != 0 {
-			m.P |= flagC
-		}
-		m.A = uint8(t)
+		// negative, zero
 		m.setNZ(m.A)
 	}
 }
 
 func (m *M6502) opSBC(v uint8) {
-	c := ^(m.P & flagC)
-	t := uint(m.A - v - c)
 	if m.P&flagD != 0 {
-		l := uint((m.A & 0x0F) - (v & 0x0F) - c)
-		h := uint((m.A & 0xF0) - (v & 0xF0))
-		m.P &= ^flagNVZC
-		if l&0x10 != 0 {
-			l -= 6
-			h--
-		}
-		if (m.A^v)&(m.A^uint8(t))&0x80 != 0 {
-			m.P |= flagV
-		}
-		if t>>8 == 0 {
-			m.P |= flagC
-		}
-		if t<<8 == 0 {
-			m.P |= flagZ
-		}
-		if t&0x80 != 0 {
-			m.P |= flagN
-		}
-		if h&0x0100 != 0 {
-			h -= 0x60
-		}
-		m.A = uint8((l & 0x0F) | (h & 0xF0))
+		panic("TODO: bcd")
 	} else {
-		m.P &= ^flagVC
-		if (m.A^v)&(m.A^uint8(t))&0x80 != 0 {
-			m.P |= flagV
-		}
-		if t>>8 == 0 {
-			m.P |= flagC
-		}
-		m.A = uint8(t)
-		m.setNZ(m.A)
+		m.opADC(^v)
+	}
+}
+
+func (m *M6502) opBit(v uint8) {
+	m.P &= ^flagNVZ
+	if v&0x80 != 0 {
+		m.P |= flagN
+	}
+	if v&0x40 != 0 {
+		m.P |= flagV
+	}
+	if v&m.A == 0 {
+		m.P |= flagZ
 	}
 }
 
@@ -474,16 +505,18 @@ func opF0(m *M6502) uint {
 
 // op24, BIT bit test, zeropage
 func op24(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readZeroPage()
+	m.opBit(v)
 	m.PC += 2
-	return 0
+	return 3
 }
 
 // op2C, BIT bit test, absolute
 func op2C(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readAbsolute()
+	m.opBit(v)
 	m.PC += 3
-	return 0
+	return 4
 }
 
 // op30, BMI branch on minus (negative set), relative
@@ -551,79 +584,90 @@ func opB8(m *M6502) uint {
 
 // opC1, CMP compare (with accumulator), X-indexed indirect
 func opC1(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readIndirectX()
+	m.opCompare(m.A, v)
 	m.PC += 2
-	return 0
+	return 6
 }
 
 // opC5, CMP compare (with accumulator), zeropage
 func opC5(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readZeroPage()
+	m.opCompare(m.A, v)
 	m.PC += 2
-	return 0
+	return 3
 }
 
 // opC9, CMP compare (with accumulator), immediate
 func opC9(m *M6502) uint {
-	panic("TODO")
+	v := m.readImmediate()
+	m.opCompare(m.A, v)
 	m.PC += 2
-	return 0
+	return 2
 }
 
 // opCD, CMP compare (with accumulator), absolute
 func opCD(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readAbsolute()
+	m.opCompare(m.A, v)
 	m.PC += 3
-	return 0
+	return 4
 }
 
 // opD1, CMP compare (with accumulator), indirect Y-indexed
 func opD1(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readIndirectYPenalized()
+	m.opCompare(m.A, v)
 	m.PC += 2
-	return 0
+	return 5 + n
 }
 
 // opD5, CMP compare (with accumulator), zeropage X-indexed
 func opD5(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readZeroPageX()
+	m.opCompare(m.A, v)
 	m.PC += 2
-	return 0
+	return 4
 }
 
 // opD9, CMP compare (with accumulator), absolute Y-indexed
 func opD9(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readAbsoluteYPenalized()
+	m.opCompare(m.A, v)
 	m.PC += 3
-	return 0
+	return 4 + n
 }
 
 // opDD, CMP compare (with accumulator), absolute X-indexed
 func opDD(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readAbsoluteXPenalized()
+	m.opCompare(m.A, v)
 	m.PC += 3
-	return 0
+	return 4 + n
 }
 
 // opE0, CPX compare with X, immediate
 func opE0(m *M6502) uint {
-	panic("TODO")
+	v := m.readImmediate()
+	m.opCompare(m.X, v)
 	m.PC += 2
-	return 0
+	return 2
 }
 
 // opE4, CPX compare with X, zeropage
 func opE4(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readZeroPage()
+	m.opCompare(m.X, v)
 	m.PC += 2
-	return 0
+	return 3
 }
 
 // opEC, CPX compare with X, absolute
 func opEC(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readAbsolute()
+	m.opCompare(m.X, v)
 	m.PC += 3
-	return 0
+	return 4
 }
 
 // opC0, CPY compare with Y, immediate
@@ -1361,23 +1405,23 @@ func op96(m *M6502) uint {
 
 // op84, STY store Y, zeropage
 func op84(m *M6502) uint {
-	panic("TODO")
+	m.writeZeroPage(m.Y)
 	m.PC += 2
-	return 0
+	return 3
 }
 
 // op8C, STY store Y, absolute
 func op8C(m *M6502) uint {
-	panic("TODO")
+	m.writeAbsolute(m.Y)
 	m.PC += 3
-	return 0
+	return 4
 }
 
 // op94, STY store Y, zeropage X-indexed
 func op94(m *M6502) uint {
-	panic("TODO")
+	m.writeZeroPageX(m.Y)
 	m.PC += 2
-	return 0
+	return 4
 }
 
 // opAA, TAX transfer accumulator to X

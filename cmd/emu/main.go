@@ -46,6 +46,12 @@ func (m *memory) read16(adr uint16) uint16 {
 	return (h << 8) | l
 }
 
+func (m *memory) read16zp(adr uint8) uint16 {
+	l := uint16(m.Read8(uint16(adr)))
+	h := uint16(m.Read8(uint16(adr + 1)))
+	return (h << 8) | l
+}
+
 func (m *memory) write16(adr uint16, val uint16) {
 	m.Write8(adr, uint8(val))
 	m.Write8(adr+1, uint8(val>>8))
