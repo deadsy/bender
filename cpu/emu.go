@@ -73,7 +73,7 @@ func (m *M6502) pop16() uint16 {
 }
 
 //-----------------------------------------------------------------------------
-// address mode write functions
+// modal write functions
 
 func (m *M6502) writeZeroPage(val uint8) {
 	ea := m.Mem.Read8(m.PC + 1)
@@ -115,17 +115,8 @@ func (m *M6502) writeIndirectY(val uint8) {
 	m.Mem.Write8(ea, val)
 }
 
-//m.writeZeroPage(m.?)
-//m.writeZeroPageX(m.?)
-//m.writeZeroPageY(m.?)
-//m.writeAbsolute(m.?)
-//m.writeAbsoluteX(m.?)
-//m.writeAbsoluteY(m.?)
-//m.writeIndirectX(m.?)
-//m.writeIndirectY(m.?)
-
 //-----------------------------------------------------------------------------
-// address mode read functions
+// modal read functions
 
 func (m *M6502) readImmediate() uint8 {
 	return m.Mem.Read8(m.PC + 1)
@@ -173,7 +164,7 @@ func (m *M6502) readIndirectY() (uint8, uint16) {
 
 func (m *M6502) readAbsoluteXPenalized() (uint8, uint, uint16) {
 	ea := m.read16(m.PC + 1)
-	n := uint(0)
+	var n uint
 	if (ea&0xff)+uint16(m.X) > 0xff {
 		n = 1
 	}
@@ -183,7 +174,7 @@ func (m *M6502) readAbsoluteXPenalized() (uint8, uint, uint16) {
 
 func (m *M6502) readAbsoluteYPenalized() (uint8, uint, uint16) {
 	ea := m.read16(m.PC + 1)
-	n := uint(0)
+	var n uint
 	if (ea&0xff)+uint16(m.Y) > 0xff {
 		n = 1
 	}
@@ -193,26 +184,13 @@ func (m *M6502) readAbsoluteYPenalized() (uint8, uint, uint16) {
 
 func (m *M6502) readIndirectYPenalized() (uint8, uint, uint16) {
 	ea := m.read16(uint16(m.Mem.Read8(m.PC + 1)))
-	n := uint(0)
+	var n uint
 	if (ea&0xff)+uint16(m.Y) > 0xff {
 		n = 1
 	}
 	ea += uint16(m.Y)
 	return m.Mem.Read8(ea), n, ea
 }
-
-//v := m.readImmediate()
-//v, _ := m.readZeroPage()
-//v, _ := m.readZeroPageX()
-//v, _ := m.readZeroPageY()
-//v, _ := m.readAbsolute()
-//v, _ := m.readAbsoluteX()
-//v, _ := m.readAbsoluteY()
-//v, _ := m.readIndirectX()
-//v, _ := m.readIndirectY()
-//v, n, _ := m.readAbsoluteXPenalized()
-//v, n, _ := m.readAbsoluteYPenalized()
-//v, n, _ := m.readIndirectYPenalized()
 
 //-----------------------------------------------------------------------------
 
@@ -237,6 +215,7 @@ func (m *M6502) opBranch(cond bool) uint {
 	return uint(cycles)
 }
 
+// opCompare
 func (m *M6502) opCompare(reg, val uint8) {
 	result := reg - val
 	m.P &= ^flagNZC
@@ -249,6 +228,7 @@ func (m *M6502) opCompare(reg, val uint8) {
 	}
 }
 
+// opADC add with carry
 func (m *M6502) opADC(v uint8) {
 
 	a := uint(m.A)
@@ -311,6 +291,7 @@ func (m *M6502) opADC(v uint8) {
 	}
 }
 
+// opSBC subtract with cary
 func (m *M6502) opSBC(v uint8) {
 	if m.P&flagD != 0 {
 		panic("TODO: bcd")
@@ -319,6 +300,7 @@ func (m *M6502) opSBC(v uint8) {
 	}
 }
 
+// opBit
 func (m *M6502) opBit(v uint8) {
 	m.P &= ^flagNVZ
 	if v&0x80 != 0 {
@@ -330,6 +312,58 @@ func (m *M6502) opBit(v uint8) {
 	if v&m.A == 0 {
 		m.P |= flagZ
 	}
+}
+
+// opASL arithmetic shift left
+func (m *M6502) opASL(v uint8) uint8 {
+	if v&0x80 != 0 {
+		m.P |= flagC
+	} else {
+		m.P &= ^flagC
+	}
+	v <<= 1
+	m.setNZ(v)
+	return v
+}
+
+// opROL rotate left
+func (m *M6502) opROL(v uint8) uint8 {
+	ci := uint8(m.P & flagC)
+	if v&0x80 != 0 {
+		m.P |= flagC
+	} else {
+		m.P &= ^flagC
+	}
+	v <<= 1
+	v |= ci
+	m.setNZ(v)
+	return v
+}
+
+// opROR rotate right
+func (m *M6502) opROR(v uint8) uint8 {
+	ci := uint8(m.P & flagC)
+	if v&1 != 0 {
+		m.P |= flagC
+	} else {
+		m.P &= ^flagC
+	}
+	v >>= 1
+	v |= ci << 7
+	m.setNZ(v)
+	return v
+}
+
+// opLSR logical shift right
+func (m *M6502) opLSR(v uint8) uint8 {
+	if v&1 != 0 {
+		m.P |= flagC
+	} else {
+		m.P &= ^flagC
+	}
+	v >>= 1
+	m.setNZ(v)
+	return v
 }
 
 //-----------------------------------------------------------------------------
@@ -401,93 +435,117 @@ func op7D(m *M6502) uint {
 
 // op21, AND and (with accumulator), X-indexed indirect
 func op21(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readIndirectX()
+	m.A &= v
+	m.setNZ(m.A)
 	m.PC += 2
-	return 0
+	return 6
 }
 
 // op25, AND and (with accumulator), zeropage
 func op25(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readZeroPage()
+	m.A &= v
+	m.setNZ(m.A)
 	m.PC += 2
-	return 0
+	return 3
 }
 
 // op29, AND and (with accumulator), immediate
 func op29(m *M6502) uint {
-	panic("TODO")
+	v := m.readImmediate()
+	m.A &= v
+	m.setNZ(m.A)
 	m.PC += 2
-	return 0
+	return 2
 }
 
 // op2D, AND and (with accumulator), absolute
 func op2D(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readAbsolute()
+	m.A &= v
+	m.setNZ(m.A)
 	m.PC += 3
-	return 0
+	return 4
 }
 
 // op31, AND and (with accumulator), indirect Y-indexed
 func op31(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readIndirectYPenalized()
+	m.A &= v
+	m.setNZ(m.A)
 	m.PC += 2
-	return 0
+	return 5 + n
 }
 
 // op35, AND and (with accumulator), zeropage X-indexed
 func op35(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readZeroPageX()
+	m.A &= v
+	m.setNZ(m.A)
 	m.PC += 2
-	return 0
+	return 4
 }
 
 // op39, AND and (with accumulator), absolute Y-indexed
 func op39(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readAbsoluteYPenalized()
+	m.A &= v
+	m.setNZ(m.A)
 	m.PC += 3
-	return 0
+	return 4 + n
 }
 
 // op3D, AND and (with accumulator), absolute X-indexed
 func op3D(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readAbsoluteXPenalized()
+	m.A &= v
+	m.setNZ(m.A)
 	m.PC += 3
-	return 0
+	return 4 + n
 }
 
 // op06, ASL arithmetic shift left, zeropage
 func op06(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readZeroPage()
+	v = m.opASL(v)
+	m.Mem.Write8(ea, v)
 	m.PC += 2
-	return 0
+	return 5
 }
 
 // op0A, ASL arithmetic shift left, accumulator
 func op0A(m *M6502) uint {
-	panic("TODO")
+	m.A = m.opASL(m.A)
 	m.PC++
-	return 0
+	return 2
 }
 
 // op0E, ASL arithmetic shift left, absolute
 func op0E(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readAbsolute()
+	v = m.opASL(v)
+	m.Mem.Write8(ea, v)
 	m.PC += 3
-	return 0
+	return 6
 }
 
 // op16, ASL arithmetic shift left, zeropage X-indexed
 func op16(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readZeroPageX()
+	v = m.opASL(v)
+	m.Mem.Write8(ea, v)
 	m.PC += 2
-	return 0
+	return 6
 }
 
 // op1E, ASL arithmetic shift left, absolute X-indexed
 func op1E(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readAbsoluteX()
+	v = m.opASL(v)
+	m.Mem.Write8(ea, v)
 	m.PC += 3
-	return 0
+	return 7
 }
 
 // op90, BCC branch on carry clear, relative
@@ -754,58 +812,74 @@ func op88(m *M6502) uint {
 
 // op41, EOR exclusive or (with accumulator), X-indexed indirect
 func op41(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readIndirectX()
+	m.A ^= v
+	m.setNZ(m.A)
 	m.PC += 2
-	return 0
+	return 6
 }
 
 // op45, EOR exclusive or (with accumulator), zeropage
 func op45(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readZeroPage()
+	m.A ^= v
+	m.setNZ(m.A)
 	m.PC += 2
-	return 0
+	return 3
 }
 
 // op49, EOR exclusive or (with accumulator), immediate
 func op49(m *M6502) uint {
-	panic("TODO")
+	v := m.readImmediate()
+	m.A ^= v
+	m.setNZ(m.A)
 	m.PC += 2
-	return 0
+	return 2
 }
 
 // op4D, EOR exclusive or (with accumulator), absolute
 func op4D(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readAbsolute()
+	m.A ^= v
+	m.setNZ(m.A)
 	m.PC += 3
-	return 0
+	return 4
 }
 
 // op51, EOR exclusive or (with accumulator), indirect Y-indexed
 func op51(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readIndirectYPenalized()
+	m.A ^= v
+	m.setNZ(m.A)
 	m.PC += 2
-	return 0
+	return 5 + n
 }
 
 // op55, EOR exclusive or (with accumulator), zeropage X-indexed
 func op55(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readZeroPageX()
+	m.A ^= v
+	m.setNZ(m.A)
 	m.PC += 2
-	return 0
+	return 4
 }
 
 // op59, EOR exclusive or (with accumulator), absolute Y-indexed
 func op59(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readAbsoluteYPenalized()
+	m.A ^= v
+	m.setNZ(m.A)
 	m.PC += 3
-	return 0
+	return 4 + n
 }
 
 // op5D, EOR exclusive or (with accumulator), absolute X-indexed
 func op5D(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readAbsoluteXPenalized()
+	m.A ^= v
+	m.setNZ(m.A)
 	m.PC += 3
-	return 0
+	return 4 + n
 }
 
 // opXX, ILL illegal
@@ -888,7 +962,7 @@ func op6C(m *M6502) uint {
 func op20(m *M6502) uint {
 	m.push16(m.PC + 2)
 	m.PC = m.read16(m.PC + 1)
-	m.callVSR()
+	m.jsrVSR()
 	return 6
 }
 
@@ -1044,37 +1118,45 @@ func opBC(m *M6502) uint {
 
 // op46, LSR logical shift right, zeropage
 func op46(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readZeroPage()
+	v = m.opLSR(v)
+	m.Mem.Write8(ea, v)
 	m.PC += 2
-	return 0
+	return 5
 }
 
 // op4A, LSR logical shift right, accumulator
 func op4A(m *M6502) uint {
-	panic("TODO")
+	m.A = m.opLSR(m.A)
 	m.PC++
-	return 0
+	return 2
 }
 
 // op4E, LSR logical shift right, absolute
 func op4E(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readAbsolute()
+	v = m.opLSR(v)
+	m.Mem.Write8(ea, v)
 	m.PC += 3
-	return 0
+	return 6
 }
 
 // op56, LSR logical shift right, zeropage X-indexed
 func op56(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readZeroPageX()
+	v = m.opLSR(v)
+	m.Mem.Write8(ea, v)
 	m.PC += 2
-	return 0
+	return 6
 }
 
 // op5E, LSR logical shift right, absolute X-indexed
 func op5E(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readAbsoluteX()
+	v = m.opLSR(v)
+	m.Mem.Write8(ea, v)
 	m.PC += 3
-	return 0
+	return 7
 }
 
 // opEA, NOP no operation
@@ -1085,58 +1167,74 @@ func opEA(m *M6502) uint {
 
 // op01, ORA or with accumulator, X-indexed indirect
 func op01(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readIndirectX()
+	m.A |= v
+	m.setNZ(m.A)
 	m.PC += 2
-	return 0
+	return 6
 }
 
 // op05, ORA or with accumulator, zeropage
 func op05(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readZeroPage()
+	m.A |= v
+	m.setNZ(m.A)
 	m.PC += 2
-	return 0
+	return 3
 }
 
 // op09, ORA or with accumulator, immediate
 func op09(m *M6502) uint {
-	panic("TODO")
+	v := m.readImmediate()
+	m.A |= v
+	m.setNZ(m.A)
 	m.PC += 2
-	return 0
+	return 2
 }
 
 // op0D, ORA or with accumulator, absolute
 func op0D(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readAbsolute()
+	m.A |= v
+	m.setNZ(m.A)
 	m.PC += 3
-	return 0
+	return 4
 }
 
 // op11, ORA or with accumulator, indirect Y-indexed
 func op11(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readIndirectYPenalized()
+	m.A |= v
+	m.setNZ(m.A)
 	m.PC += 2
-	return 0
+	return 5 + n
 }
 
 // op15, ORA or with accumulator, zeropage X-indexed
 func op15(m *M6502) uint {
-	panic("TODO")
+	v, _ := m.readZeroPageX()
+	m.A |= v
+	m.setNZ(m.A)
 	m.PC += 2
-	return 0
+	return 4
 }
 
 // op19, ORA or with accumulator, absolute Y-indexed
 func op19(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readAbsoluteYPenalized()
+	m.A |= v
+	m.setNZ(m.A)
 	m.PC += 3
-	return 0
+	return 4 + n
 }
 
 // op1D, ORA or with accumulator, absolute X-indexed
 func op1D(m *M6502) uint {
-	panic("TODO")
+	v, n, _ := m.readAbsoluteXPenalized()
+	m.A |= v
+	m.setNZ(m.A)
 	m.PC += 3
-	return 0
+	return 4 + n
 }
 
 // op48, PHA push accumulator
@@ -1170,72 +1268,88 @@ func op28(m *M6502) uint {
 
 // op26, ROL rotate left, zeropage
 func op26(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readZeroPage()
+	v = m.opROL(v)
+	m.Mem.Write8(ea, v)
 	m.PC += 2
-	return 0
+	return 5
 }
 
 // op2A, ROL rotate left, accumulator
 func op2A(m *M6502) uint {
-	panic("TODO")
+	m.A = m.opROL(m.A)
 	m.PC++
-	return 0
+	return 2
 }
 
 // op2E, ROL rotate left, absolute
 func op2E(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readAbsolute()
+	v = m.opROL(v)
+	m.Mem.Write8(ea, v)
 	m.PC += 3
-	return 0
+	return 6
 }
 
 // op36, ROL rotate left, zeropage X-indexed
 func op36(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readZeroPageX()
+	v = m.opROL(v)
+	m.Mem.Write8(ea, v)
 	m.PC += 2
-	return 0
+	return 6
 }
 
 // op3E, ROL rotate left, absolute X-indexed
 func op3E(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readAbsoluteX()
+	v = m.opROL(v)
+	m.Mem.Write8(ea, v)
 	m.PC += 3
-	return 0
+	return 7
 }
 
 // op66, ROR rotate right, zeropage
 func op66(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readZeroPage()
+	v = m.opROR(v)
+	m.Mem.Write8(ea, v)
 	m.PC += 2
-	return 0
+	return 5
 }
 
 // op6A, ROR rotate right, accumulator
 func op6A(m *M6502) uint {
-	panic("TODO")
+	m.A = m.opROR(m.A)
 	m.PC++
-	return 0
+	return 2
 }
 
 // op6E, ROR rotate right, absolute
 func op6E(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readAbsolute()
+	v = m.opROR(v)
+	m.Mem.Write8(ea, v)
 	m.PC += 3
-	return 0
+	return 6
 }
 
 // op76, ROR rotate right, zeropage X-indexed
 func op76(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readZeroPageX()
+	v = m.opROR(v)
+	m.Mem.Write8(ea, v)
 	m.PC += 2
-	return 0
+	return 6
 }
 
 // op7E, ROR rotate right, absolute X-indexed
 func op7E(m *M6502) uint {
-	panic("TODO")
+	v, ea := m.readAbsoluteX()
+	v = m.opROR(v)
+	m.Mem.Write8(ea, v)
 	m.PC += 3
-	return 0
+	return 7
 }
 
 // op40, RTI return from interrupt
@@ -1503,6 +1617,16 @@ func New6502(mem Memory) *M6502 {
 	m.Mem = mem
 	m.Power(true)
 	m.Reset()
+
+	// initialise the opcode usage map
+	m.usage = make(map[uint8]uint)
+	for i := 0; i < 256; i++ {
+		x := opcodeLookup(uint8(i))
+		if x.ins != "ill" {
+			m.usage[uint8(i)] = 0
+		}
+	}
+
 	return &m
 }
 
@@ -1580,10 +1704,25 @@ func (m *M6502) Run() error {
 	}
 
 	if m.exit {
-		return fmt.Errorf("exit at %04x, status %02x, %d cpu cycles", m.PC, m.A, m.cycles)
+		return fmt.Errorf("exit at %04x, status %02x, %d cpu cycles, %.2f coverage", m.PC, m.A, m.cycles, m.Coverage())
 	}
 
+	// accumulate opcode usage
+	m.usage[op]++
+
 	return nil
+}
+
+// Coverage returns the fraction of valid opcode that have run.
+func (m *M6502) Coverage() float32 {
+	total := len(m.usage)
+	run := 0
+	for _, v := range m.usage {
+		if v != 0 {
+			run++
+		}
+	}
+	return float32(run) / float32(total)
 }
 
 // ReadPC returns the 6502 program counter.
@@ -1600,23 +1739,23 @@ func (m *M6502) Exit(status uint8) {
 //-----------------------------------------------------------------------------
 // virtual JSR/JMP subroutines
 
-func (m *M6502) jmpVSR() {
-	if m.vsr != nil {
-		if fn, ok := m.vsr[m.PC]; ok {
-			// call the hook
-			fn(m)
-			// called by a jump: we don't have anywhere to go...
-		}
-	}
-}
-
-func (m *M6502) callVSR() {
+func (m *M6502) jsrVSR() {
 	if m.vsr != nil {
 		if fn, ok := m.vsr[m.PC]; ok {
 			// call the hook
 			fn(m)
 			// simulate RTS
 			m.PC = m.pop16() + 1
+		}
+	}
+}
+
+func (m *M6502) jmpVSR() {
+	if m.vsr != nil {
+		if fn, ok := m.vsr[m.PC]; ok {
+			// call the hook
+			fn(m)
+			// called by a jump: we don't have anywhere to go...
 		}
 	}
 }

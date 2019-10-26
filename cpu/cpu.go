@@ -44,6 +44,7 @@ type M6502 struct {
 	illegal bool               // illegal instruction
 	exit    bool               // exit from emulation
 	vsr     map[uint16]VSRFunc // virtual subroutines
+	usage   map[uint8]uint     // opcode usage
 }
 
 // NmiAddress is the non-maskable interrupt address

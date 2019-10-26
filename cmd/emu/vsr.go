@@ -51,7 +51,8 @@ func vsrWrite(m *cpu.M6502) {
 	buf := popParam(m, 2)
 	fd := popParam(m, 2)
 
-	fmt.Printf("vsrWrite ($%04X, $%04X, $%04X)\n", fd, buf, n)
+	//fmt.Printf("vsrWrite ($%04X, $%04X, $%04X)\n", fd, buf, n)
+	_ = fd
 
 	s := make([]uint8, n)
 	for i := range s {

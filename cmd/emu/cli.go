@@ -161,9 +161,9 @@ var cmdGo = cli.Leaf{
 	F: func(c *cli.CLI, args []string) {
 		m := c.User.(*userApp).cpu
 		for true {
-			s := m.Disassemble(m.PC, 1)
+			//s := m.Disassemble(m.PC, 1)
 			err := m.Run()
-			c.User.Put(fmt.Sprintf("%s\n", s))
+			//c.User.Put(fmt.Sprintf("%s\n", s))
 			if err != nil {
 				c.User.Put(fmt.Sprintf("%s\n", err))
 				break
