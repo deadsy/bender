@@ -41,8 +41,10 @@ type M6502 struct {
 	cycles  uint               // number of cpu cycles
 	nmi     bool               // nmi state
 	irq     bool               // irq state
-	illegal bool               // illegal instruction
+	illegal bool               // illegal instruction state
 	exit    bool               // exit from emulation
+	lastPC  uint16             // PC stuck detection
+	stuckPC uint               // PC stuck detection
 	vsr     map[uint16]VSRFunc // virtual subroutines
 	usage   map[uint8]uint     // opcode usage
 }

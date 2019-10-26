@@ -1615,8 +1615,6 @@ var opcodeTable = [256]opFunc{
 func New6502(mem Memory) *M6502 {
 	var m M6502
 	m.Mem = mem
-	m.Power(true)
-	m.Reset()
 
 	// initialise the opcode usage map
 	m.usage = make(map[uint8]uint)
@@ -1710,19 +1708,29 @@ func (m *M6502) Run() error {
 	// accumulate opcode usage
 	m.usage[op]++
 
+	// stuck PC detection
+	if m.PC == m.lastPC {
+		m.stuckPC++
+		if m.stuckPC >= 4 {
+			return fmt.Errorf("PC is stuck at %04x", m.PC)
+		}
+	} else {
+		m.stuckPC = 0
+		m.lastPC = m.PC
+	}
+
 	return nil
 }
 
-// Coverage returns the fraction of valid opcode that have run.
+// Coverage returns the fraction of valid opcodes that have run.
 func (m *M6502) Coverage() float32 {
-	total := len(m.usage)
 	run := 0
 	for _, v := range m.usage {
 		if v != 0 {
 			run++
 		}
 	}
-	return float32(run) / float32(total)
+	return float32(run) / float32(len(m.usage))
 }
 
 // ReadPC returns the 6502 program counter.

@@ -25,7 +25,7 @@ func setAX(m *cpu.M6502, val uint16) {
 	m.X = uint8(val >> 8)
 }
 
-const spAddress = 0
+const spAddress = 0 // TODO should be u.mem.spAdr
 
 func popParam(m *cpu.M6502, inc uint16) uint16 {
 	mem := m.Mem.(*memory)

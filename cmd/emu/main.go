@@ -27,7 +27,7 @@ const historyPath = "history.txt"
 
 type memory struct {
 	ram   [64 << 10]uint8
-	spAdr uint16
+	spAdr uint8 // sim6502: zero page stack pointer address
 }
 
 // Read8 reads a byte from memory.
@@ -66,9 +66,25 @@ func newMemory() *memory {
 	return &m
 }
 
-// Load loads a sim6502 style executable file (See cc65).
-func (m *memory) Load(filename string) (string, error) {
+//-----------------------------------------------------------------------------
 
+// userApp is state associated with the user application.
+type userApp struct {
+	mem *memory
+	cpu *cpu.M6502
+}
+
+// newUserApp returns a user application.
+func newUserApp() *userApp {
+	mem := newMemory()
+	cpu := cpu.New6502(mem)
+	return &userApp{
+		mem: mem,
+		cpu: cpu,
+	}
+}
+
+func (u *userApp) loadSim6502(filename string) (string, error) {
 	// get the file contents
 	x, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -87,55 +103,56 @@ func (m *memory) Load(filename string) (string, error) {
 	}
 
 	// zero page stack pointer address (virtual subroutine abi)
-	m.spAdr = uint16(x[7])
+	u.mem.spAdr = x[7]
 
 	// copy the code to the load address
 	loadAdr := uint16(x[8]) | (uint16(x[9]) << 8)
 	for i, v := range x[12:] {
-		m.Write8(loadAdr+uint16(i), v)
+		u.mem.Write8(loadAdr+uint16(i), v)
 	}
-	endAdr := loadAdr + uint16(len(x[12:]))
+	endAdr := loadAdr + uint16(len(x[12:])) - 1
 
 	// setup the reset address
 	rstAdr := uint16(x[10]) | (uint16(x[11]) << 8)
-	m.write16(cpu.RstAddress, rstAdr)
+	u.mem.write16(cpu.RstAddress, rstAdr)
 
-	return fmt.Sprintf("%s code %04x-%04x reset %04x sp %04x", filename, loadAdr, endAdr, rstAdr, m.spAdr), nil
+	// Add the sim6502 VSRs
+	u.cpu.AddVSR(0xfff4, vsrOpen)
+	u.cpu.AddVSR(0xfff5, vsrClose)
+	u.cpu.AddVSR(0xfff6, vsrRead)
+	u.cpu.AddVSR(0xfff7, vsrWrite)
+	u.cpu.AddVSR(0xfff8, vsrArgs)
+	u.cpu.AddVSR(0xfff9, vsrExit)
+
+	u.cpu.Power(true)
+	u.cpu.Reset()
+
+	return fmt.Sprintf("%s code %04x-%04x reset %04x sp %02x", filename, loadAdr, endAdr, rstAdr, u.mem.spAdr), nil
 }
 
-//-----------------------------------------------------------------------------
+func (u *userApp) loadRaw(filename string) (string, error) {
 
-// userApp is state associated with the user application.
-type userApp struct {
-	mem *memory
-	cpu *cpu.M6502
-}
-
-// newUserApp returns a user application.
-func newUserApp(fname string) (*userApp, error) {
-	mem := newMemory()
-	status, err := mem.Load(fname)
+	// get the file contents
+	x, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	fmt.Printf("%s\n", status)
-	cpu := cpu.New6502(mem)
 
-	cpu.AddVSR(0xfff4, vsrOpen)
-	cpu.AddVSR(0xfff5, vsrClose)
-	cpu.AddVSR(0xfff6, vsrRead)
-	cpu.AddVSR(0xfff7, vsrWrite)
-	cpu.AddVSR(0xfff8, vsrArgs)
-	cpu.AddVSR(0xfff9, vsrExit)
+	// copy the code to the load address
+	var loadAdr uint16
+	for i, v := range x {
+		u.mem.Write8(loadAdr+uint16(i), v)
+	}
+	endAdr := loadAdr + uint16(len(x)) - 1
 
-	return &userApp{
-		mem: mem,
-		cpu: cpu,
-	}, nil
+	u.cpu.Power(true)
+	u.cpu.Reset()
+
+	return fmt.Sprintf("%s code %04x-%04x", filename, loadAdr, endAdr), nil
 }
 
 // Put outputs a string to the user application.
-func (user *userApp) Put(s string) {
+func (u *userApp) Put(s string) {
 	fmt.Printf("%s", s)
 }
 
@@ -143,14 +160,24 @@ func (user *userApp) Put(s string) {
 
 func main() {
 	// command line flags
-	fname := flag.String("f", "out.bin", "executable file")
+	sname := flag.String("s", "out.bin", "sim6502 binary file")
+	rname := flag.String("r", "out.bin", "raw binary file")
 	flag.Parse()
 
+	_ = rname
+	_ = sname
+
 	// create the application
-	app, err := newUserApp(*fname)
+	app := newUserApp()
+
+	//status, err := app.loadSim6502(*sname)
+	status, err := app.loadRaw(*rname)
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
+	} else {
+		fmt.Fprintf(os.Stderr, "%s\n", status)
 	}
 
 	// create the cli

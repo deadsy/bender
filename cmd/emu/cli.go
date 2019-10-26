@@ -67,6 +67,11 @@ func memArgs(args []string) (uint16, uint, error) {
 	return uint16(adr), uint(size), nil
 }
 
+var helpMemDisplay = []cli.Help{
+	{"<adr> [len]", "address (hex)"},
+	{"", "length (hex) - default is 0x40"},
+}
+
 var cmdMemDisplay = cli.Leaf{
 	Descr: "display memory",
 	F: func(c *cli.CLI, args []string) {
@@ -103,9 +108,96 @@ var cmdMemDisplay = cli.Leaf{
 	},
 }
 
-var helpMemDisplay = []cli.Help{
-	{"<adr> [len]", "address (hex)"},
-	{"", "length (hex) - default is 0x40"},
+var cmdZeroPage = cli.Leaf{
+	Descr: "show the zero page memory",
+	F: func(c *cli.CLI, args []string) {
+		cmdMemDisplay.F(c, []string{"0", "100"})
+	},
+}
+
+var cmdStack = cli.Leaf{
+	Descr: "show the stack memory",
+	F: func(c *cli.CLI, args []string) {
+		cmdMemDisplay.F(c, []string{"100", "100"})
+	},
+}
+
+//-----------------------------------------------------------------------------
+
+// goArgs converts go arguments to an address value.
+func goArgs(pc uint16, args []string) (uint16, error) {
+	err := cli.CheckArgc(args, []int{0, 1})
+	if err != nil {
+		return 0, err
+	}
+	// address
+	adr := int(pc)
+	if len(args) >= 1 {
+		adr, err = cli.IntArg(args[0], [2]int{0, 0xffff}, 16)
+		if err != nil {
+			return 0, err
+		}
+	}
+	return uint16(adr), nil
+}
+
+var helpGo = []cli.Help{
+	{"<adr>", "address (hex) - default is PC"},
+}
+
+var cmdGo = cli.Leaf{
+	Descr: "run the emulation (no tracing)",
+	F: func(c *cli.CLI, args []string) {
+		m := c.User.(*userApp).cpu
+		adr, err := goArgs(m.PC, args)
+		if err != nil {
+			c.User.Put(fmt.Sprintf("%s\n", err))
+			return
+		}
+		m.PC = adr
+		for true {
+			err := m.Run()
+			if err != nil {
+				c.User.Put(fmt.Sprintf("%s\n", err))
+				break
+			}
+		}
+	},
+}
+
+var cmdTrace = cli.Leaf{
+	Descr: "run the emulation (with tracing)",
+	F: func(c *cli.CLI, args []string) {
+		m := c.User.(*userApp).cpu
+		adr, err := goArgs(m.PC, args)
+		if err != nil {
+			c.User.Put(fmt.Sprintf("%s\n", err))
+			return
+		}
+		m.PC = adr
+		for true {
+			s := m.Disassemble(m.PC, 1)
+			err := m.Run()
+			c.User.Put(fmt.Sprintf("%s\n", s))
+			if err != nil {
+				c.User.Put(fmt.Sprintf("%s\n", err))
+				break
+			}
+		}
+	},
+}
+
+var cmdStep = cli.Leaf{
+	Descr: "single step the emulation",
+	F: func(c *cli.CLI, args []string) {
+		m := c.User.(*userApp).cpu
+		s := m.Disassemble(m.PC, 1)
+		err := m.Run()
+		c.User.Put(fmt.Sprintf("%s\n", s))
+		if err != nil {
+			c.User.Put(fmt.Sprintf("%s\n", err))
+		}
+	},
 }
 
 //-----------------------------------------------------------------------------
@@ -135,6 +227,11 @@ func daArgs(pc uint16, args []string) (uint16, uint, error) {
 	return uint16(adr), uint(size), nil
 }
 
+var helpDisassemble = []cli.Help{
+	{"[adr] [len]", "address (hex) - default is current pc"},
+	{"", "length (hex) - default is 0x10"},
+}
+
 var cmdDisassemble = cli.Leaf{
 	Descr: "disassemble memory",
 	F: func(c *cli.CLI, args []string) {
@@ -148,6 +245,8 @@ var cmdDisassemble = cli.Leaf{
 	},
 }
 
+//-----------------------------------------------------------------------------
+
 var cmdRegisters = cli.Leaf{
 	Descr: "display cpu registers",
 	F: func(c *cli.CLI, args []string) {
@@ -156,67 +255,20 @@ var cmdRegisters = cli.Leaf{
 	},
 }
 
-var cmdGo = cli.Leaf{
-	Descr: "run the emulation",
-	F: func(c *cli.CLI, args []string) {
-		m := c.User.(*userApp).cpu
-		for true {
-			//s := m.Disassemble(m.PC, 1)
-			err := m.Run()
-			//c.User.Put(fmt.Sprintf("%s\n", s))
-			if err != nil {
-				c.User.Put(fmt.Sprintf("%s\n", err))
-				break
-			}
-		}
-	},
-}
-
-var cmdStep = cli.Leaf{
-	Descr: "single step the emulation",
-	F: func(c *cli.CLI, args []string) {
-		m := c.User.(*userApp).cpu
-		s := m.Disassemble(m.PC, 1)
-		err := m.Run()
-		c.User.Put(fmt.Sprintf("%s\n", s))
-		if err != nil {
-			c.User.Put(fmt.Sprintf("%s\n", err))
-		}
-	},
-}
-
-var cmdZeroPage = cli.Leaf{
-	Descr: "show the zero page memory",
-	F: func(c *cli.CLI, args []string) {
-		cmdMemDisplay.F(c, []string{"0", "100"})
-	},
-}
-
-var cmdStack = cli.Leaf{
-	Descr: "show the stack memory",
-	F: func(c *cli.CLI, args []string) {
-		cmdMemDisplay.F(c, []string{"100", "100"})
-	},
-}
-
 //-----------------------------------------------------------------------------
-
-var helpDisassemble = []cli.Help{
-	{"[adr] [len]", "address (hex) - default is current pc"},
-	{"", "length (hex) - default is 0x10"},
-}
 
 // root menu
 var menuRoot = cli.Menu{
 	{"da", cmdDisassemble, helpDisassemble},
 	{"exit", cmdExit},
-	{"go", cmdGo},
+	{"go", cmdGo, helpGo},
 	{"help", cmdHelp},
 	{"history", cmdHistory, cli.HistoryHelp},
 	{"md", cmdMemDisplay, helpMemDisplay},
 	{"regs", cmdRegisters},
 	{"stack", cmdStack},
 	{"step", cmdStep},
+	{"trace", cmdTrace, helpGo},
 	{"zp", cmdZeroPage},
 }
 
