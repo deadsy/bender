@@ -12,6 +12,14 @@ import "fmt"
 
 //-----------------------------------------------------------------------------
 
+func (m *M6502) setC(val uint) {
+	if val>>8 != 0 {
+		m.P |= flagC
+	} else {
+		m.P &= ^flagC
+	}
+}
+
 func (m *M6502) setN(val uint8) {
 	if val&0x80 != 0 {
 		m.P |= flagN
@@ -25,14 +33,6 @@ func (m *M6502) setZ(val uint8) {
 		m.P |= flagZ
 	} else {
 		m.P &= ^flagZ
-	}
-}
-
-func (m *M6502) setC(val uint) {
-	if val>>8 != 0 {
-		m.P |= flagC
-	} else {
-		m.P &= ^flagC
 	}
 }
 
@@ -60,16 +60,14 @@ func (m *M6502) pop8() uint8 {
 }
 
 func (m *M6502) push16(val uint16) {
-	m.Mem.Write8(stkAddress+uint16(m.S), uint8(val>>8))
-	m.Mem.Write8(stkAddress+uint16(m.S-1), uint8(val))
-	m.S -= 2
+	m.push8(uint8(val >> 8))
+	m.push8(uint8(val))
 }
 
 func (m *M6502) pop16() uint16 {
-	l := uint16(m.Mem.Read8(stkAddress + uint16(m.S+1)))
-	h := uint16(m.Mem.Read8(stkAddress + uint16(m.S+2)))
-	m.S += 2
-	return (h << 8) | l
+	l := m.pop8()
+	h := m.pop8()
+	return (uint16(h) << 8) | uint16(l)
 }
 
 //-----------------------------------------------------------------------------
@@ -215,16 +213,13 @@ func (m *M6502) opBranch(cond bool) uint {
 	return uint(cycles)
 }
 
-// opCompare
+// opCompare sets the NZC values for the register/value compare operation.
 func (m *M6502) opCompare(reg, val uint8) {
-	result := reg - val
-	m.P &= ^flagNZC
-	m.P |= result & flagN
-	if result == 0 {
-		m.P |= flagZ
-	}
+	m.setNZ(reg - val)
 	if reg >= val {
 		m.P |= flagC
+	} else {
+		m.P &= ^flagC
 	}
 }
 
@@ -234,47 +229,35 @@ func (m *M6502) opADC(v uint8) {
 	a := uint(m.A)
 	old := a
 	rhs := uint(v)
-
-	var c uint
-	if m.P&flagC != 0 {
-		c = 1
-	}
+	c := uint(m.P & flagC)
 
 	if m.P&flagD != 0 {
-
-		panic("TODO: bcd")
-
-		/*
-
-			lo := (old & 0x0F) + (rhs & 0x0F) + c
-			if lo >= 0x0A {
-				lo = ((lo + 0x06) & 0x0F) + 0x10
-			}
-			a = (old & 0xF0) + (rhs & 0xF0) + lo
-			// overflow
-			res := int(old&0xF0) + int(rhs&0xF0) + int(lo)
-			if (res < -128) || (res > 127) {
-				m.P |= flagV
-			} else {
-				m.P &= ^flagV
-			}
-			// zero
-			if (old+rhs+c)&0xff == 0 {
-				m.P |= flagZ
-			} else {
-				m.P &= ^flagZ
-			}
-			// negative
-			m.setN(uint8(a))
-			if a >= 0xA0 {
-				a += 0x60
-			}
-			// carry
-			m.setC(a)
-			m.A = uint8(a)
-
-		*/
-
+		lo := (old & 0x0F) + (rhs & 0x0F) + c
+		if lo >= 0x0A {
+			lo = ((lo + 0x06) & 0x0F) + 0x10
+		}
+		a = (old & 0xF0) + (rhs & 0xF0) + lo
+		// overflow
+		res := int(int8(old&0xF0)) + int(int8(rhs&0xF0)) + int(int8(lo))
+		if (res < -128) || (res > 127) {
+			m.P |= flagV
+		} else {
+			m.P &= ^flagV
+		}
+		// zero
+		if (old+rhs+c)&0xff == 0 {
+			m.P |= flagZ
+		} else {
+			m.P &= ^flagZ
+		}
+		// negative
+		m.setN(uint8(a))
+		if a >= 0xA0 {
+			a += 0x60
+		}
+		// carry
+		m.setC(a)
+		m.A = uint8(a)
 	} else {
 		a += rhs + c
 		m.A = uint8(a)
@@ -293,8 +276,48 @@ func (m *M6502) opADC(v uint8) {
 
 // opSBC subtract with cary
 func (m *M6502) opSBC(v uint8) {
+
+	a := uint(m.A)
+	old := a
+	rhs := uint(v)
+	c := uint(m.P & flagC)
+
 	if m.P&flagD != 0 {
-		panic("TODO: bcd")
+
+		lo := (old & 0x0F) - (rhs & 0x0F) + c - 1
+		if lo&0x80 != 0 {
+			lo = ((lo - 0x06) & 0x0F) - 0x10
+		}
+
+		a = (old & 0xF0) - (rhs & 0xF0) + lo
+
+		if a&0x100 != 0 {
+			a -= 0x60
+		}
+
+		res := a - rhs + (^c & 1)
+
+		// zero
+		m.setZ(uint8(res))
+
+		// negative
+		m.setN(uint8(res))
+
+		// carry
+		if res <= 0xff {
+			m.P |= flagC
+		} else {
+			m.P &= ^flagC
+		}
+
+		// overflow
+		if (old^rhs)&(old^res)&0x80 != 0 {
+			m.P |= flagV
+		} else {
+			m.P &= ^flagV
+		}
+		m.A = uint8(a)
+
 	} else {
 		m.opADC(^v)
 	}
@@ -303,10 +326,10 @@ func (m *M6502) opSBC(v uint8) {
 // opBit
 func (m *M6502) opBit(v uint8) {
 	m.P &= ^flagNVZ
-	if v&0x80 != 0 {
+	if v&(1<<7) != 0 {
 		m.P |= flagN
 	}
-	if v&0x40 != 0 {
+	if v&(1<<6) != 0 {
 		m.P |= flagV
 	}
 	if v&m.A == 0 {
@@ -596,10 +619,9 @@ func op10(m *M6502) uint {
 
 // op00, BRK break/interrupt
 func op00(m *M6502) uint {
-	m.Mem.Read8(m.PC + 1)
 	m.push16(m.PC + 2)
-	m.push8(m.P | flagB)
-	m.P |= flagB | flagI
+	m.push8(m.P)
+	m.P |= flagI
 	m.PC = m.read16(BrkAddress)
 	return 7
 }
@@ -1239,30 +1261,30 @@ func op1D(m *M6502) uint {
 
 // op48, PHA push accumulator
 func op48(m *M6502) uint {
-	m.PC++
 	m.push8(m.A)
+	m.PC++
 	return 3
 }
 
 // op08, PHP push processor status (SR)
 func op08(m *M6502) uint {
-	m.PC++
 	m.push8(m.P)
+	m.PC++
 	return 3
 }
 
 // op68, PLA pull accumulator
 func op68(m *M6502) uint {
-	m.PC++
 	m.A = m.pop8()
 	m.setNZ(m.A)
+	m.PC++
 	return 4
 }
 
 // op28, PLP pull processor status (SR)
 func op28(m *M6502) uint {
+	m.P = m.pop8() | flagB | (1 << 5)
 	m.PC++
-	m.P = m.pop8()
 	return 4
 }
 
@@ -1637,8 +1659,6 @@ func (m *M6502) Power(state bool) {
 		m.A = initialA
 		m.X = initialX
 		m.Y = initialY
-		m.irq = false
-		m.nmi = false
 	} else {
 		m.PC = 0
 		m.S = 0
@@ -1646,9 +1666,14 @@ func (m *M6502) Power(state bool) {
 		m.A = 0
 		m.X = 0
 		m.Y = 0
-		m.irq = false
-		m.nmi = false
 	}
+	m.irq = false
+	m.nmi = false
+	m.illegal = false
+	m.exit = false
+	m.cycles = 0
+	m.lastPC = 0
+	m.stuckPC = 0
 }
 
 // Reset the 6502 CPU.
@@ -1675,21 +1700,20 @@ func (m *M6502) Run() error {
 	// nmi handling
 	if m.nmi {
 		m.nmi = false
-		m.P &= ^flagB
 		m.push16(m.PC)
-		m.push8(m.P)
-		m.PC = m.read16(NmiAddress)
+		m.push8(m.P & ^flagB)
 		m.P |= flagI
+		m.PC = m.read16(NmiAddress)
 		m.cycles += 7
 		return nil
 	}
 	// irq handling
 	if m.irq && (m.P&flagI == 0) {
-		m.P &= ^flagB
+		m.irq = false
 		m.push16(m.PC)
-		m.push8(m.P)
-		m.PC = m.read16(IrqAddress)
+		m.push8(m.P & ^flagB)
 		m.P |= flagI
+		m.PC = m.read16(IrqAddress)
 		m.cycles += 7
 		return nil
 	}
@@ -1712,7 +1736,7 @@ func (m *M6502) Run() error {
 	if m.PC == m.lastPC {
 		m.stuckPC++
 		if m.stuckPC >= 4 {
-			return fmt.Errorf("PC is stuck at %04x", m.PC)
+			return fmt.Errorf("PC is stuck at %04x, %d cpu cycles", m.PC, m.cycles)
 		}
 	} else {
 		m.stuckPC = 0

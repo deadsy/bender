@@ -191,8 +191,14 @@ var cmdStep = cli.Leaf{
 	Descr: "single step the emulation",
 	F: func(c *cli.CLI, args []string) {
 		m := c.User.(*userApp).cpu
+		adr, err := goArgs(m.PC, args)
+		if err != nil {
+			c.User.Put(fmt.Sprintf("%s\n", err))
+			return
+		}
+		m.PC = adr
 		s := m.Disassemble(m.PC, 1)
-		err := m.Run()
+		err = m.Run()
 		c.User.Put(fmt.Sprintf("%s\n", s))
 		if err != nil {
 			c.User.Put(fmt.Sprintf("%s\n", err))
@@ -257,6 +263,18 @@ var cmdRegisters = cli.Leaf{
 
 //-----------------------------------------------------------------------------
 
+var cmdReset = cli.Leaf{
+	Descr: "reset the cpu",
+	F: func(c *cli.CLI, args []string) {
+		m := c.User.(*userApp).cpu
+		m.Power(false)
+		m.Power(true)
+		m.Reset()
+	},
+}
+
+//-----------------------------------------------------------------------------
+
 // root menu
 var menuRoot = cli.Menu{
 	{"da", cmdDisassemble, helpDisassemble},
@@ -266,8 +284,9 @@ var menuRoot = cli.Menu{
 	{"history", cmdHistory, cli.HistoryHelp},
 	{"md", cmdMemDisplay, helpMemDisplay},
 	{"regs", cmdRegisters},
+	{"reset", cmdReset},
 	{"stack", cmdStack},
-	{"step", cmdStep},
+	{"step", cmdStep, helpGo},
 	{"trace", cmdTrace, helpGo},
 	{"zp", cmdZeroPage},
 }

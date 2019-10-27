@@ -170,8 +170,8 @@ func main() {
 	// create the application
 	app := newUserApp()
 
-	//status, err := app.loadSim6502(*sname)
-	status, err := app.loadRaw(*rname)
+	status, err := app.loadSim6502(*sname)
+	//status, err := app.loadRaw(*rname)
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)

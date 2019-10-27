@@ -82,9 +82,7 @@ const flagI = uint8(1 << 2) // Interrupt Disable
 const flagZ = uint8(1 << 1) // Zero
 const flagC = uint8(1 << 0) // Carry
 
-const flagVC = (flagV | flagC)
 const flagNZ = (flagN | flagZ)
-const flagNZC = (flagN | flagZ | flagC)
 const flagNVZ = (flagN | flagV | flagZ)
 const flagNVZC = (flagN | flagV | flagZ | flagC)
 
