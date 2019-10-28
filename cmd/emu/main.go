@@ -84,12 +84,11 @@ func newUserApp() *userApp {
 	}
 }
 
-func (u *userApp) loadSim6502(filename string) (string, error) {
-	// get the file contents
-	x, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return "", err
-	}
+//-----------------------------------------------------------------------------
+// file loading
+
+// loadSim6502 loads a sim6502 binary file as produced by the cc65 tools.
+func (u *userApp) loadSim6502(filename string, x []uint8) (string, error) {
 
 	// validate the header
 	if string(x[0:5]) != "sim65" {
@@ -124,19 +123,11 @@ func (u *userApp) loadSim6502(filename string) (string, error) {
 	u.cpu.AddVSR(0xfff8, vsrArgs)
 	u.cpu.AddVSR(0xfff9, vsrExit)
 
-	u.cpu.Power(true)
-	u.cpu.Reset()
-
 	return fmt.Sprintf("%s code %04x-%04x reset %04x sp %02x", filename, loadAdr, endAdr, rstAdr, u.mem.spAdr), nil
 }
 
-func (u *userApp) loadRaw(filename string) (string, error) {
-
-	// get the file contents
-	x, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return "", err
-	}
+// loadRaw loads a raw binary file.
+func (u *userApp) loadRaw(filename string, x []uint8) (string, error) {
 
 	// copy the code to the load address
 	var loadAdr uint16
@@ -145,11 +136,26 @@ func (u *userApp) loadRaw(filename string) (string, error) {
 	}
 	endAdr := loadAdr + uint16(len(x)) - 1
 
-	u.cpu.Power(true)
-	u.cpu.Reset()
-
 	return fmt.Sprintf("%s code %04x-%04x", filename, loadAdr, endAdr), nil
 }
+
+func (u *userApp) loadFile(filename string) (string, error) {
+
+	// get the file contents
+	x, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return "", err
+	}
+
+	// identify the file type
+	if string(x[0:5]) == "sim65" {
+		return u.loadSim6502(filename, x)
+	}
+
+	return u.loadRaw(filename, x)
+}
+
+//-----------------------------------------------------------------------------
 
 // Put outputs a string to the user application.
 func (u *userApp) Put(s string) {
@@ -160,18 +166,14 @@ func (u *userApp) Put(s string) {
 
 func main() {
 	// command line flags
-	sname := flag.String("s", "out.bin", "sim6502 binary file")
-	rname := flag.String("r", "out.bin", "raw binary file")
+	fname := flag.String("f", "out.bin", "file to load (sim6502 or raw)")
 	flag.Parse()
-
-	_ = rname
-	_ = sname
 
 	// create the application
 	app := newUserApp()
 
-	status, err := app.loadSim6502(*sname)
-	//status, err := app.loadRaw(*rname)
+	// load the file
+	status, err := app.loadFile(*fname)
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
@@ -185,6 +187,11 @@ func main() {
 	c.HistoryLoad(historyPath)
 	c.SetRoot(menuRoot)
 	c.SetPrompt("emu> ")
+
+	// reset the cpu
+	app.cpu.Power(false)
+	app.cpu.Power(true)
+	app.cpu.Reset()
 
 	// run the cli
 	for c.Running() {

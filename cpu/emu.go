@@ -260,15 +260,19 @@ func (m *M6502) opADC(v uint8) {
 		m.A = uint8(a)
 	} else {
 		a += rhs + c
-		m.A = uint8(a)
 		// carry
-		m.setC(a)
+		if a > 0xff {
+			m.P |= flagC
+		} else {
+			m.P &= ^flagC
+		}
 		// overflow
 		if (((old ^ rhs) & 0x80) == 0) && (((old ^ a) & 0x80) != 0) {
 			m.P |= flagV
 		} else {
 			m.P &= ^flagV
 		}
+		m.A = uint8(a)
 		// negative, zero
 		m.setNZ(m.A)
 	}
@@ -297,11 +301,8 @@ func (m *M6502) opSBC(v uint8) {
 
 		res := a - rhs + (^c & 1)
 
-		// zero
-		m.setZ(uint8(res))
-
-		// negative
-		m.setN(uint8(res))
+		// negative, zero
+		m.setNZ(uint8(res))
 
 		// carry
 		if res <= 0xff {
@@ -316,10 +317,26 @@ func (m *M6502) opSBC(v uint8) {
 		} else {
 			m.P &= ^flagV
 		}
+
 		m.A = uint8(a)
 
 	} else {
-		m.opADC(^v)
+		a -= rhs + (^c & 1)
+		// carry
+		if a <= 0xff {
+			m.P |= flagC
+		} else {
+			m.P &= ^flagC
+		}
+		// overflow
+		if (old^rhs)&(old^a)&0x80 != 0 {
+			m.P |= flagV
+		} else {
+			m.P &= ^flagV
+		}
+		m.A = uint8(a)
+		// negative, zero
+		m.setNZ(m.A)
 	}
 }
 
