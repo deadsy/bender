@@ -32,7 +32,6 @@ static char *hex32(char *s, uint32_t val) {
   return s;
 }
 
-
 static char *itoa(char *s, int val) {
   unsigned int uval;
   int i = 0;
@@ -63,10 +62,8 @@ static char *itoa(char *s, int val) {
   // reverse the string
   while (j < i) {
     char tmp = s[j];
-    s[j] = s[i];
-    s[i] = tmp;
-    i --;
-    j ++;
+    s[j++] = s[i];
+    s[i--] = tmp;
   }
 
   return s;
@@ -74,9 +71,11 @@ static char *itoa(char *s, int val) {
 
 void main(void) {
   char tmp[32];
-  puts(itoa(tmp, sizeof(char)));
-  puts(itoa(tmp, sizeof(int)));
-  puts(itoa(tmp, sizeof(long)));
+
+  printf("sizeof(char) %d bytes\n", sizeof(char));
+  printf("sizeof(int) %d bytes\n", sizeof(int));
+  printf("sizeof(long) %d bytes\n", sizeof(long));
+
   puts(itoa(tmp, 0));
   puts(itoa(tmp, 1234));
   puts(itoa(tmp, -1234));

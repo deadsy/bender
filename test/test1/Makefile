@@ -11,8 +11,11 @@ TGT = sim6502
 
 OUT = test1
 
+CFLAGS := -g
+CFLAGS += -O -Oi -Or -Os
+
 all:
-	$(XCC) -g -Oi -t $(TGT) main.c
+	$(XCC) $(CFLAGS) -t $(TGT) main.c
 	$(XAS) -g main.s
 	$(XLD) --mapfile $(OUT).map -o $(OUT) -t $(TGT) main.o $(TGT).lib
 
