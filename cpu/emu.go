@@ -281,63 +281,42 @@ func (m *M6502) opADC(v uint8) {
 // opSBC subtract with cary
 func (m *M6502) opSBC(v uint8) {
 
-	a := uint(m.A)
-	old := a
+	old := uint(m.A)
 	rhs := uint(v)
-	c := uint(m.P & flagC)
+	c := uint(^m.P & flagC)
 
+	a := uint(m.A) - rhs - c
+
+	// carry
+	if a <= 0xff {
+		m.P |= flagC
+	} else {
+		m.P &= ^flagC
+	}
+
+	// overflow
+	if (old^rhs)&(old^a)&0x80 != 0 {
+		m.P |= flagV
+	} else {
+		m.P &= ^flagV
+	}
+
+	// negative, zero
+	m.setNZ(uint8(a))
+
+	// decimal operation
 	if m.P&flagD != 0 {
-
-		lo := (old & 0x0F) - (rhs & 0x0F) + c - 1
+		lo := (old & 0x0F) - (rhs & 0x0F) - c
 		if lo&0x80 != 0 {
 			lo = ((lo - 0x06) & 0x0F) - 0x10
 		}
-
 		a = (old & 0xF0) - (rhs & 0xF0) + lo
-
 		if a&0x100 != 0 {
 			a -= 0x60
 		}
-
-		res := a - rhs + (^c & 1)
-
-		// negative, zero
-		m.setNZ(uint8(res))
-
-		// carry
-		if res <= 0xff {
-			m.P |= flagC
-		} else {
-			m.P &= ^flagC
-		}
-
-		// overflow
-		if (old^rhs)&(old^res)&0x80 != 0 {
-			m.P |= flagV
-		} else {
-			m.P &= ^flagV
-		}
-
-		m.A = uint8(a)
-
-	} else {
-		a -= rhs + (^c & 1)
-		// carry
-		if a <= 0xff {
-			m.P |= flagC
-		} else {
-			m.P &= ^flagC
-		}
-		// overflow
-		if (old^rhs)&(old^a)&0x80 != 0 {
-			m.P |= flagV
-		} else {
-			m.P &= ^flagV
-		}
-		m.A = uint8(a)
-		// negative, zero
-		m.setNZ(m.A)
 	}
+
+	m.A = uint8(a)
 }
 
 // opBit
