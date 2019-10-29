@@ -24,31 +24,31 @@
 ;
 ;------------------------------------------------------------------------------
 
-.segment "DATA"
+.segment "BSS"
 
 AR: .res 1
-CF: .res 1
-DA: .res 1
-DNVZC: .res 1
-ERROR: .res 1
-HA: .res 1
-HNVZC: .res 1
-N1: .res 1
-N1H: .res 1
-N1L: .res 1
-N2: .res 1
-N2L: .res 1
 NF: .res 1
 VF: .res 1
 ZF: .res 1
+CF: .res 1
+DA: .res 1
+DNVZC: .res 1
+HA: .res 1
+HNVZC: .res 1
+N1: .res 1
+N1L: .res 1
+N1H: .res 1
+N2: .res 1
+N2L: .res 1
 N2H: .res 2
+ERROR: .res 1
 
 ;------------------------------------------------------------------------------
 
-.proc _bcd_test: near
-.export _bcd_test
-
 .segment	"CODE"
+
+.proc _bcd_test
+.export _bcd_test
 
         LDY #1    ; initialize Y (used to loop through carry flag values)
         STY ERROR ; store 1 in ERROR until the test passes
@@ -96,8 +96,7 @@ DONE:   RTS
 ; V flag
 ;
 
-.proc ADD: near
-.segment	"CODE"
+.proc ADD
 
         SED       ; decimal mode
         CPY #1    ; set carry if Y = 1, clear carry if Y = 0
@@ -157,8 +156,7 @@ A3:      STA AR    ; predicted accumulator result
 ; arithmetic
 ;
 
-.proc SUB: near
-.segment	"CODE"
+.proc SUB
 
         SED       ; decimal mode
         CPY #1    ; set carry if Y = 1, clear carry if Y = 0
@@ -178,13 +176,13 @@ A3:      STA AR    ; predicted accumulator result
         PLA
         STA HNVZC ; flags result of N1-N2 using binary arithmetic
         RTS
+
 .endproc
 
 ;------------------------------------------------------------------------------
 ; Calculate the predicted SBC accumulator result for the 6502 and 65816
 
-.proc SUB1: near
-.segment	"CODE"
+.proc SUB1
 
         CPY #1    ; set carry if Y = 1, clear carry if Y = 0
         LDA N1L
@@ -205,13 +203,13 @@ S11:    ORA N1H
         SBC #$5F  ; subtract $60 (carry is clear)
 S12:     STA AR
         RTS
+
 .endproc
 
 ;------------------------------------------------------------------------------
 ; Calculate the predicted SBC accumulator result for the 6502 and 65C02
 
-.proc SUB2: near
-.segment	"CODE"
+.proc SUB2
 
         CPY #1    ; set carry if Y = 1, clear carry if Y = 0
         LDA N1L
@@ -229,11 +227,12 @@ S21:    ORA N1H
         SBC N2H,X
         BCS S22
         SBC #$5F   ; subtract $60 (carry is clear)
-S22:     CPX #0
+S22:    CPX #0
         BEQ S23
         SBC #6
-S23:     STA AR     ; predicted accumulator result
+S23:    STA AR     ; predicted accumulator result
         RTS
+
 .endproc
 
 ;------------------------------------------------------------------------------
@@ -243,8 +242,7 @@ S23:     STA AR     ; predicted accumulator result
 ;   Z flag = 1 (BEQ branch) if same
 ;   Z flag = 0 (BNE branch) if different
 
-.proc COMPARE: near
-.segment	"CODE"
+.proc COMPARE
 
         LDA DA
         CMP AR
@@ -265,14 +263,14 @@ S23:     STA AR     ; predicted accumulator result
         EOR CF
         AND #1    ; mask off C flag
 C1:     RTS
+
 .endproc
 
 ;------------------------------------------------------------------------------
 ; These routines store the predicted values for ADC and SBC for the 6502,
 ; 65C02, and 65816 in AR, CF, NF, VF, and ZF
 
-.proc A6502: near
-.segment	"CODE"
+.proc A6502
 
   LDA VF
   ;
@@ -287,8 +285,7 @@ C1:     RTS
 .endproc
 
 
-.proc S6502: near
-.segment	"CODE"
+.proc S6502
 
   JSR SUB1
   LDA HNVZC
@@ -301,8 +298,7 @@ C1:     RTS
 .endproc
 
 
-.proc A65C02: near
-.segment	"CODE"
+.proc A65C02
 
   LDA AR
   PHP
@@ -313,8 +309,7 @@ C1:     RTS
 
 .endproc
 
-.proc S65C02: near
-.segment	"CODE"
+.proc S65C02
 
   JSR SUB2
   LDA AR
@@ -329,8 +324,7 @@ C1:     RTS
 
 .endproc
 
-.proc A65816: near
-.segment	"CODE"
+.proc A65816
 
   LDA AR
   PHP
@@ -341,8 +335,7 @@ C1:     RTS
 
 .endproc
 
-.proc S65816: near
-.segment	"CODE"
+.proc S65816
 
   JSR SUB1
   LDA AR
