@@ -26,65 +26,65 @@
 
 .segment "BSS"
 
-AR: .res 1
-NF: .res 1
-VF: .res 1
-ZF: .res 1
-CF: .res 1
-DA: .res 1
-DNVZC: .res 1
-HA: .res 1
-HNVZC: .res 1
-N1: .res 1
-N1L: .res 1
-N1H: .res 1
-N2: .res 1
-N2L: .res 1
-N2H: .res 2
-ERROR: .res 1
+AR:     .res    1
+NF:     .res    1
+VF:     .res    1
+ZF:     .res    1
+CF:     .res    1
+DA:     .res    1
+DNVZC:  .res    1
+HA:     .res    1
+HNVZC:  .res    1
+N1:     .res    1
+N1L:    .res    1
+N1H:    .res    1
+N2:     .res    1
+N2L:    .res    1
+N2H:    .res    2
+ERROR:  .res    1
 
 ;------------------------------------------------------------------------------
 
-.segment	"CODE"
+.segment "CODE"
 
-.proc _bcd_test
+.proc   _bcd_test
 .export _bcd_test
 
-        LDY #1    ; initialize Y (used to loop through carry flag values)
-        STY ERROR ; store 1 in ERROR until the test passes
-        LDA #0    ; initialize N1 and N2
-        STA N1
-        STA N2
-LOOP1:  LDA N2    ; N2L = N2 & $0F
-        AND #$0F  ; [1] see text
-        STA N2L
-        LDA N2    ; N2H = N2 & $F0
-        AND #$F0  ; [2] see text
-        STA N2H
-        ORA #$0F  ; N2H+1 = (N2 & $F0) + $0F
-        STA N2H+1
-LOOP2:  LDA N1    ; N1L = N1 & $0F
-        AND #$0F  ; [3] see text
-        STA N1L
-        LDA N1    ; N1H = N1 & $F0
-        AND #$F0  ; [4] see text
-        STA N1H
-        JSR ADD
-        JSR A6502
-        JSR COMPARE
-        BNE DONE
-        JSR SUB
-        JSR S6502
-        JSR COMPARE
-        BNE DONE
-        INC N1    ; [5] see text
-        BNE LOOP2 ; loop through all 256 values of N1
-        INC N2    ; [6] see text
-        BNE LOOP1 ; loop through all 256 values of N2
+        LDY     #1              ; initialize Y (used to loop through carry flag values)
+        STY     ERROR           ; store 1 in ERROR until the test passes
+        LDA     #0              ; initialize N1 and N2
+        STA     N1
+        STA     N2
+LOOP1:  LDA     N2              ; N2L = N2 & $0F
+        AND     #$0F            ; [1] see text
+        STA     N2L
+        LDA     N2              ; N2H = N2 & $F0
+        AND     #$F0            ; [2] see text
+        STA     N2H
+        ORA     #$0F            ; N2H+1 = (N2 & $F0) + $0F
+        STA     N2H+1
+LOOP2:  LDA     N1              ; N1L = N1 & $0F
+        AND     #$0F            ; [3] see text
+        STA     N1L
+        LDA     N1              ; N1H = N1 & $F0
+        AND     #$F0            ; [4] see text
+        STA     N1H
+        JSR     ADD
+        JSR     A6502
+        JSR     COMPARE
+        BNE     DONE
+        JSR     SUB
+        JSR     S6502
+        JSR     COMPARE
+        BNE     DONE
+        INC     N1              ; [5] see text
+        BNE     LOOP2           ; loop through all 256 values of N1
+        INC     N2              ; [6] see text
+        BNE     LOOP1           ; loop through all 256 values of N2
         DEY
-        BPL LOOP1 ; loop through both values of the carry flag
-        LDA #0    ; test passed, so store 0 in ERROR
-        STA ERROR
+        BPL     LOOP1           ; loop through both values of the carry flag
+        LDA     #0              ; test passed, so store 0 in ERROR
+        STA     ERROR
 DONE:   RTS
 
 .endproc
@@ -96,56 +96,56 @@ DONE:   RTS
 ; V flag
 ;
 
-.proc ADD
+.proc   ADD
 
-        SED       ; decimal mode
-        CPY #1    ; set carry if Y = 1, clear carry if Y = 0
-        LDA N1
-        ADC N2
-        STA DA    ; actual accumulator result in decimal mode
+        SED                     ; decimal mode
+        CPY     #1              ; set carry if Y = 1, clear carry if Y = 0
+        LDA     N1
+        ADC     N2
+        STA     DA              ; actual accumulator result in decimal mode
         PHP
         PLA
-        STA DNVZC ; actual flags result in decimal mode
-        CLD       ; binary mode
-        CPY #1    ; set carry if Y = 1, clear carry if Y = 0
-        LDA N1
-        ADC N2
-        STA HA    ; accumulator result of N1+N2 using binary arithmetic
+        STA     DNVZC           ; actual flags result in decimal mode
+        CLD                     ; binary mode
+        CPY     #1              ; set carry if Y = 1, clear carry if Y = 0
+        LDA     N1
+        ADC     N2
+        STA     HA              ; accumulator result of N1+N2 using binary arithmetic
 
         PHP
         PLA
-        STA HNVZC ; flags result of N1+N2 using binary arithmetic
-        CPY #1
-        LDA N1L
-        ADC N2L
-        CMP #$0A
-        LDX #0
-        BCC A1
+        STA     HNVZC           ; flags result of N1+N2 using binary arithmetic
+        CPY     #1
+        LDA     N1L
+        ADC     N2L
+        CMP     #$0A
+        LDX     #0
+        BCC     A1
         INX
-        ADC #5    ; add 6 (carry is set)
-        AND #$0F
+        ADC     #5              ; add 6 (carry is set)
+        AND     #$0F
         SEC
-A1:     ORA N1H
-;
-; if N1L + N2L <  $0A, then add N2 & $F0
-; if N1L + N2L >= $0A, then add (N2 & $F0) + $0F + 1 (carry is set)
-;
-        ADC N2H,X
+A1:     ORA     N1H
+        ;
+        ; if N1L + N2L <  $0A, then add N2 & $F0
+        ; if N1L + N2L >= $0A, then add (N2 & $F0) + $0F + 1 (carry is set)
+        ;
+        ADC     N2H,X
         PHP
-        BCS A2
-        CMP #$A0
-        BCC A3
-A2:      ADC #$5F  ; add $60 (carry is set)
+        BCS     A2
+        CMP     #$A0
+        BCC     A3
+A2:     ADC     #$5F            ; add $60 (carry is set)
         SEC
-A3:      STA AR    ; predicted accumulator result
+A3:     STA     AR              ; predicted accumulator result
         PHP
         PLA
-        STA CF    ; predicted carry result
+        STA     CF              ; predicted carry result
         PLA
-;
-; note that all 8 bits of the P register are stored in VF
-;
-        STA VF    ; predicted V flags
+        ;
+        ; note that all 8 bits of the P register are stored in VF
+        ;
+        STA     VF              ; predicted V flags
         RTS
 
 .endproc
@@ -156,25 +156,25 @@ A3:      STA AR    ; predicted accumulator result
 ; arithmetic
 ;
 
-.proc SUB
+.proc   SUB
 
-        SED       ; decimal mode
-        CPY #1    ; set carry if Y = 1, clear carry if Y = 0
-        LDA N1
-        SBC N2
-        STA DA    ; actual accumulator result in decimal mode
+        SED                     ; decimal mode
+        CPY     #1              ; set carry if Y = 1, clear carry if Y = 0
+        LDA     N1
+        SBC     N2
+        STA     DA              ; actual accumulator result in decimal mode
         PHP
         PLA
-        STA DNVZC ; actual flags result in decimal mode
-        CLD       ; binary mode
-        CPY #1    ; set carry if Y = 1, clear carry if Y = 0
-        LDA N1
-        SBC N2
-        STA HA    ; accumulator result of N1-N2 using binary arithmetic
+        STA     DNVZC           ; actual flags result in decimal mode
+        CLD                     ; binary mode
+        CPY     #1              ; set carry if Y = 1, clear carry if Y = 0
+        LDA     N1
+        SBC     N2
+        STA     HA              ; accumulator result of N1-N2 using binary arithmetic
 
         PHP
         PLA
-        STA HNVZC ; flags result of N1-N2 using binary arithmetic
+        STA     HNVZC           ; flags result of N1-N2 using binary arithmetic
         RTS
 
 .endproc
@@ -182,26 +182,26 @@ A3:      STA AR    ; predicted accumulator result
 ;------------------------------------------------------------------------------
 ; Calculate the predicted SBC accumulator result for the 6502 and 65816
 
-.proc SUB1
+.proc   SUB1
 
-        CPY #1    ; set carry if Y = 1, clear carry if Y = 0
-        LDA N1L
-        SBC N2L
-        LDX #0
-        BCS S11
+        CPY     #1              ; set carry if Y = 1, clear carry if Y = 0
+        LDA     N1L
+        SBC     N2L
+        LDX     #0
+        BCS     S11
         INX
-        SBC #5    ; subtract 6 (carry is clear)
-        AND #$0F
+        SBC     #5              ; subtract 6 (carry is clear)
+        AND     #$0F
         CLC
-S11:    ORA N1H
-;
-; if N1L - N2L >= 0, then subtract N2 & $F0
-; if N1L - N2L <  0, then subtract (N2 & $F0) + $0F + 1 (carry is clear)
-;
-        SBC N2H,X
-        BCS S12
-        SBC #$5F  ; subtract $60 (carry is clear)
-S12:     STA AR
+S11:    ORA     N1H
+        ;
+        ; if N1L - N2L >= 0, then subtract N2 & $F0
+        ; if N1L - N2L <  0, then subtract (N2 & $F0) + $0F + 1 (carry is clear)
+        ;
+        SBC     N2H,X
+        BCS     S12
+        SBC     #$5F            ; subtract $60 (carry is clear)
+S12:    STA     AR
         RTS
 
 .endproc
@@ -209,28 +209,28 @@ S12:     STA AR
 ;------------------------------------------------------------------------------
 ; Calculate the predicted SBC accumulator result for the 6502 and 65C02
 
-.proc SUB2
+.proc   SUB2
 
-        CPY #1    ; set carry if Y = 1, clear carry if Y = 0
-        LDA N1L
-        SBC N2L
-        LDX #0
-        BCS S21
+        CPY     #1              ; set carry if Y = 1, clear carry if Y = 0
+        LDA     N1L
+        SBC     N2L
+        LDX     #0
+        BCS     S21
         INX
-        AND #$0F
+        AND     #$0F
         CLC
-S21:    ORA N1H
-;
-; if N1L - N2L >= 0, then subtract N2 & $F0
-; if N1L - N2L <  0, then subtract (N2 & $F0) + $0F + 1 (carry is clear)
-;
-        SBC N2H,X
-        BCS S22
-        SBC #$5F   ; subtract $60 (carry is clear)
-S22:    CPX #0
-        BEQ S23
-        SBC #6
-S23:    STA AR     ; predicted accumulator result
+S21:    ORA     N1H
+        ;
+        ; if N1L - N2L >= 0, then subtract N2 & $F0
+        ; if N1L - N2L <  0, then subtract (N2 & $F0) + $0F + 1 (carry is clear)
+        ;
+        SBC     N2H,X
+        BCS     S22
+        SBC     #$5F            ; subtract $60 (carry is clear)
+S22:    CPX     #0
+        BEQ     S23
+        SBC     #6
+S23:    STA     AR              ; predicted accumulator result
         RTS
 
 .endproc
@@ -242,26 +242,26 @@ S23:    STA AR     ; predicted accumulator result
 ;   Z flag = 1 (BEQ branch) if same
 ;   Z flag = 0 (BNE branch) if different
 
-.proc COMPARE
+.proc   COMPARE
 
-        LDA DA
-        CMP AR
-        BNE C1
-        LDA DNVZC ; [7] see text
-        EOR NF
-        AND #$80  ; mask off N flag
-        BNE C1
-        LDA DNVZC ; [8] see text
-        EOR VF
-        AND #$40  ; mask off V flag
-        BNE C1    ; [9] see text
-        LDA DNVZC
-        EOR ZF    ; mask off Z flag
-        AND #2
-        BNE C1    ; [10] see text
-        LDA DNVZC
-        EOR CF
-        AND #1    ; mask off C flag
+        LDA     DA
+        CMP     AR
+        BNE     C1
+        LDA     DNVZC           ; [7] see text
+        EOR     NF
+        AND     #$80            ; mask off N flag
+        BNE     C1
+        LDA     DNVZC           ; [8] see text
+        EOR     VF
+        AND     #$40            ; mask off V flag
+        BNE     C1              ; [9] see text
+        LDA     DNVZC
+        EOR     ZF              ; mask off Z flag
+        AND     #2
+        BNE     C1              ; [10] see text
+        LDA     DNVZC
+        EOR     CF
+        AND     #1              ; mask off C flag
 C1:     RTS
 
 .endproc
@@ -270,83 +270,83 @@ C1:     RTS
 ; These routines store the predicted values for ADC and SBC for the 6502,
 ; 65C02, and 65816 in AR, CF, NF, VF, and ZF
 
-.proc A6502
+.proc   A6502
 
-  LDA VF
-  ;
-  ; since all 8 bits of the P register were stored in VF, bit 7 of VF contains
-  ; the N flag for NF
-  ;
-  STA NF
-  LDA HNVZC
-  STA ZF
-  RTS
-
-.endproc
-
-
-.proc S6502
-
-  JSR SUB1
-  LDA HNVZC
-  STA NF
-  STA VF
-  STA ZF
-  STA CF
-  RTS
+        LDA     VF
+        ;
+        ; since all 8 bits of the P register were stored in VF, bit 7 of VF contains
+        ; the N flag for NF
+        ;
+        STA     NF
+        LDA     HNVZC
+        STA     ZF
+        RTS
 
 .endproc
 
 
-.proc A65C02
+.proc   S6502
 
-  LDA AR
-  PHP
-  PLA
-  STA NF
-  STA ZF
-  RTS
-
-.endproc
-
-.proc S65C02
-
-  JSR SUB2
-  LDA AR
-  PHP
-  PLA
-  STA NF
-  STA ZF
-  LDA HNVZC
-  STA VF
-  STA CF
-  RTS
+        JSR     SUB1
+        LDA     HNVZC
+        STA     NF
+        STA     VF
+        STA     ZF
+        STA     CF
+        RTS
 
 .endproc
 
-.proc A65816
 
-  LDA AR
-  PHP
-  PLA
-  STA NF
-  STA ZF
-  RTS
+.proc   A65C02
+
+        LDA     AR
+        PHP
+        PLA
+        STA     NF
+        STA     ZF
+        RTS
 
 .endproc
 
-.proc S65816
+.proc   S65C02
 
-  JSR SUB1
-  LDA AR
-  PHP
-  PLA
-  STA NF
-  STA ZF
-  LDA HNVZC
-  STA VF
-  STA CF
-  RTS
+        JSR     SUB2
+        LDA     AR
+        PHP
+        PLA
+        STA     NF
+        STA     ZF
+        LDA     HNVZC
+        STA     VF
+        STA     CF
+        RTS
+
+.endproc
+
+.proc   A65816
+
+        LDA     AR
+        PHP
+        PLA
+        STA     NF
+        STA     ZF
+        RTS
+
+.endproc
+
+.proc   S65816
+
+        JSR     SUB1
+        LDA     AR
+        PHP
+        PLA
+        STA     NF
+        STA     ZF
+        LDA     HNVZC
+        STA     VF
+        STA     CF
+        RTS
 
 .endproc
 
