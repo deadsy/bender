@@ -12,33 +12,37 @@ import "fmt"
 
 //-----------------------------------------------------------------------------
 
-func (m *M6502) setC(val uint) {
-	if val>>8 != 0 {
-		m.P |= flagC
-	} else {
-		m.P &= ^flagC
-	}
-}
-
-func (m *M6502) setN(val uint8) {
-	if val&0x80 != 0 {
+func (m *M6502) setN(cond bool) {
+	if cond {
 		m.P |= flagN
-	} else {
-		m.P &= ^flagN
 	}
 }
 
-func (m *M6502) setZ(val uint8) {
-	if val == 0 {
+func (m *M6502) setV(cond bool) {
+	if cond {
+		m.P |= flagV
+	}
+}
+
+func (m *M6502) setZ(cond bool) {
+	if cond {
 		m.P |= flagZ
-	} else {
-		m.P &= ^flagZ
+	}
+}
+
+func (m *M6502) setC(cond bool) {
+	if cond {
+		m.P |= flagC
 	}
 }
 
 func (m *M6502) setNZ(val uint8) {
-	m.setN(val)
-	m.setZ(val)
+	m.P &= ^flagNZ
+	if val&0x80 != 0 {
+		m.P |= flagN
+	} else if val == 0 {
+		m.P |= flagZ
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -225,112 +229,72 @@ func (m *M6502) opCompare(reg, val uint8) {
 
 // opADC add with carry
 func (m *M6502) opADC(v uint8) {
-
-	a := uint(m.A)
-	old := a
-	rhs := uint(v)
 	c := uint(m.P & flagC)
+	m.P &= ^flagNVZC
 
 	if m.P&flagD != 0 {
-		lo := (old & 0x0F) + (rhs & 0x0F) + c
-		if lo >= 0x0A {
-			lo = ((lo + 0x06) & 0x0F) + 0x10
+		al := (m.A & 15) + (v & 15) + uint8(c)
+		if al > 9 {
+			al += 6
 		}
-		a = (old & 0xF0) + (rhs & 0xF0) + lo
-		// overflow
-		res := int(int8(old&0xF0)) + int(int8(rhs&0xF0)) + int(int8(lo))
-		if (res < -128) || (res > 127) {
-			m.P |= flagV
-		} else {
-			m.P &= ^flagV
+		ah := (m.A >> 4) + (v >> 4)
+		if al > 15 {
+			ah++
 		}
-		// zero
-		if (old+rhs+c)&0xff == 0 {
-			m.P |= flagZ
-		} else {
-			m.P &= ^flagZ
-		}
-		// negative
-		m.setN(uint8(a))
-		if a >= 0xA0 {
-			a += 0x60
+		m.setZ(m.A+v+uint8(c) == 0)
+		m.setN(ah&8 != 0)
+		m.setV(^(m.A^v)&(m.A^(ah<<4))&0x80 != 0)
+		if ah > 9 {
+			ah += 6
 		}
 		// carry
-		m.setC(a)
-		m.A = uint8(a)
+		m.setC(ah > 15)
+		m.A = (ah << 4) | (al & 15)
 	} else {
-		a += rhs + c
-		// carry
-		if a > 0xff {
-			m.P |= flagC
-		} else {
-			m.P &= ^flagC
-		}
-		// overflow
-		if (((old ^ rhs) & 0x80) == 0) && (((old ^ a) & 0x80) != 0) {
-			m.P |= flagV
-		} else {
-			m.P &= ^flagV
-		}
+		a := uint(m.A) + uint(v) + c
+		m.setN(a&0x80 != 0)
+		m.setZ(a&0xff == 0)
+		m.setC(a > 0xff)
+		m.setV(^(uint(m.A)^uint(v))&(uint(m.A)^a)&0x80 != 0)
 		m.A = uint8(a)
-		// negative, zero
-		m.setNZ(m.A)
 	}
 }
 
 // opSBC subtract with cary
 func (m *M6502) opSBC(v uint8) {
-
-	old := uint(m.A)
-	rhs := uint(v)
 	c := uint(^m.P & flagC)
+	m.P &= ^flagNVZC
 
-	a := uint(m.A) - rhs - c
+	a := uint(m.A) - uint(v) - c
+	m.setN(a&0x80 != 0)
+	m.setZ(a&0xff == 0)
+	m.setC(a <= 0xff)
+	m.setV((m.A^v)&(m.A^uint8(a))&0x80 != 0)
 
-	// carry
-	if a <= 0xff {
-		m.P |= flagC
-	} else {
-		m.P &= ^flagC
-	}
-
-	// overflow
-	if (old^rhs)&(old^a)&0x80 != 0 {
-		m.P |= flagV
-	} else {
-		m.P &= ^flagV
-	}
-
-	// negative, zero
-	m.setNZ(uint8(a))
-
-	// decimal operation
 	if m.P&flagD != 0 {
-		lo := (old & 0x0F) - (rhs & 0x0F) - c
-		if lo&0x80 != 0 {
-			lo = ((lo - 0x06) & 0x0F) - 0x10
+		al := (m.A & 15) - (v & 15) - uint8(c)
+		if int8(al) < 0 {
+			al -= 6
 		}
-		a = (old & 0xF0) - (rhs & 0xF0) + lo
-		if a&0x100 != 0 {
-			a -= 0x60
+		ah := (m.A >> 4) - (v >> 4)
+		if int8(al) < 0 {
+			ah--
 		}
+		if int8(ah) < 0 {
+			ah -= 6
+		}
+		m.A = (ah << 4) | (al & 15)
+	} else {
+		m.A = uint8(a)
 	}
-
-	m.A = uint8(a)
 }
 
 // opBit
 func (m *M6502) opBit(v uint8) {
 	m.P &= ^flagNVZ
-	if v&(1<<7) != 0 {
-		m.P |= flagN
-	}
-	if v&(1<<6) != 0 {
-		m.P |= flagV
-	}
-	if v&m.A == 0 {
-		m.P |= flagZ
-	}
+	m.setN(v&(1<<7) != 0)
+	m.setV(v&(1<<6) != 0)
+	m.setZ(v&m.A == 0)
 }
 
 // opASL arithmetic shift left
