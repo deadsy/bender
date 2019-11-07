@@ -1,0 +1,16 @@
+github.com/creack/pty v1.1.7 h1:6pwm8kMQKCmgUg0ZHTm5+/YvRK0s3THD/28+T6/kk4A=
+github.com/creack/pty v1.1.7/go.mod h1:lj5s0c3V2DBrqTV7llrYr5NG6My20zk30Fl46Y7DoTY=
+github.com/creack/termios v0.0.0-20160714173321-88d0029e36a1 h1:3ZFknr3UZk2E18CuCeA0NMRk226zM/slMEFOmJTtJjI=
+github.com/creack/termios v0.0.0-20160714173321-88d0029e36a1/go.mod h1:141QqpYDZtzU1VJMRHPU6ZWkn9K5cE6X8elajH9hJk4=
+github.com/deadsy/go-cli v0.0.0-20191024205308-41881ba22723 h1:JfmJoeFsO1016D9d8IxGkyv3HB5DB4v54J15hjrSVR0=
+github.com/deadsy/go-cli v0.0.0-20191024205308-41881ba22723/go.mod h1:L5T0jdopKfMY5XZ58YLQWKLVLp2leBy9tO8hUUgx+ss=
+github.com/deadsy/go-fdset v0.0.0-20171222151525-3483a2eedc50 h1:BaOf8+CjqVF5fyrURBopKjw8rkrn/3M6gljKOxnFHI0=
+github.com/deadsy/go-fdset v0.0.0-20171222151525-3483a2eedc50/go.mod h1:k4cs/s766EtemQo1eMCnPF18lSlNer6fJGTnsR7FG04=
+github.com/kr/pty v1.1.8 h1:AkaSdXYQOWeaO3neb8EM634ahkXXe3jYbVh/F9lq+GI=
+github.com/kr/pty v1.1.8/go.mod h1:O1sed60cT9XZ5uDucP5qwvh+TE3NnUj51EiZO/lmSfw=
+github.com/mattn/go-isatty v0.0.10 h1:qxFzApOv4WsAL965uUPIsXzAKCZxN2p9UqdhFS4ZW10=
+github.com/mattn/go-isatty v0.0.10/go.mod h1:qgIWMr58cqv1PHHyhnkY9lrL7etaEgOFcMEpPG5Rm84=
+github.com/mattn/go-runewidth v0.0.6 h1:V2iyH+aX9C5fsYCpK60U8BYIvmhqxuOL3JZcqc1NB7k=
+github.com/mattn/go-runewidth v0.0.6/go.mod h1:H031xJmbD/WCDINGzjvQ9THkh0rPKHF+m2gUSrubnMI=
+golang.org/x/sys v0.0.0-20191008105621-543471e840be h1:QAcqgptGM8IQBC9K/RC4o+O9YmqEm0diQn9QmZw/0mU=
+golang.org/x/sys v0.0.0-20191008105621-543471e840be/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
