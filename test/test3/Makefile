@@ -1,5 +1,6 @@
+TOP = ../..
 
-BASE = /opt/cc65
+BASE = $(TOP)/ext/usr
 
 XCC = $(BASE)/bin/cc65
 XAS = $(BASE)/bin/ca65
