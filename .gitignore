@@ -1,1 +1,4 @@
+.stamp_*
 dl
+ext/cc65
+ext/usr
