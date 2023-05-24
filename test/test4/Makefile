@@ -23,6 +23,9 @@ all:
 test:
 	$(SIM) -c $(OUT)
 
+run:
+	x64 -autostart $(OUT)
+
 clean:
 	-rm *.s
 	-rm *.o

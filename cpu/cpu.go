@@ -53,7 +53,7 @@ type M6502 struct {
 const NmiAddress = 0xFFFA
 
 // RstAddress is the reset address
-const RstAddress = 0XFFFC
+const RstAddress = 0xFFFC
 
 // IrqAddress is the interrupt request address
 const IrqAddress = 0xFFFE

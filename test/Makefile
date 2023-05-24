@@ -1,5 +1,5 @@
 
-DIRS = test1 test3 \
+DIRS = test1 test3 test4 \
 
 all:
 	for dir in $(DIRS); do \

@@ -1696,7 +1696,7 @@ func (m *M6502) Run() error {
 	if m.PC == m.lastPC {
 		m.stuckPC++
 		if m.stuckPC >= 4 {
-			return fmt.Errorf("PC is stuck at %04x, %d cpu cycles", m.PC, m.cycles)
+			return fmt.Errorf("PC is stuck at %04x, %d cpu cycles, %.2f coverage", m.PC, m.cycles, m.Coverage())
 		}
 	} else {
 		m.stuckPC = 0

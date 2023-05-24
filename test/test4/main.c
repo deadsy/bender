@@ -9,52 +9,28 @@
 
 //-----------------------------------------------------------------------------
 
-static void outs(const char *s) {
-	while (*s != 0) {
-		putchar(*s++);
-	}
-}
+#define REG_CLR(ptr, bits) (*(ptr) &= ~(bits))
+#define REG_SET(ptr, bits) (*(ptr) |= (bits))
 
-static void *xmemcpy(void *dst, const void *src, size_t n) {
-	char *d = dst;
-	const char *s = src;
-	int i;
-	for (i = 0; i < n; i++) {
-		d[i] = s[i];
+//-----------------------------------------------------------------------------
+
+void *xmemcpy(void *dst, const void *src, size_t n) {
+	if (n != 0) {
+		char *d = dst;
+		const char *s = src;
+		do {
+			*d++ = *s++;
+		} while (--n != 0);
 	}
 	return dst;
 }
 
 //-----------------------------------------------------------------------------
 
-static char nybble(uint8_t val) {
-	val &= 0xf;
-	if (val >= 0xa && val <= 0xf) {
-		return val - 0xa + 'a';
-	}
-	return val + '0';
-}
-
-static char *hex8(char *s, uint8_t val) {
-	s[0] = nybble(val >> 4);
-	s[1] = nybble(val);
-	s[2] = 0;
-	return s;
-}
-
-static char *hex16(char *s, uint16_t val) {
-	hex8(s, val >> 8);
-	hex8(&s[2], val);
-	return s;
-}
-
-//-----------------------------------------------------------------------------
-
 #define BYTES_PER_LINE 8
 
-static void mem_display8(uint16_t addr, void *ptr, size_t n) {
+static void mem_display(uint16_t addr, const void *ptr, size_t n) {
 	char ascii[BYTES_PER_LINE + 1];
-	char tmp[4 + 1];
 	size_t ofs = 0;
 
 	n = (n + BYTES_PER_LINE - 1) & ~(BYTES_PER_LINE - 1);
@@ -62,12 +38,10 @@ static void mem_display8(uint16_t addr, void *ptr, size_t n) {
 
 	while (ofs < n) {
 		int i;
-		outs(hex16(tmp, addr + ofs));
-		outs(" ");
+		printf("%04x ", addr + ofs);
 		for (i = 0; i < BYTES_PER_LINE; i++) {
 			uint8_t c = ((uint8_t *) ptr)[ofs];
-			outs(hex8(tmp, c));
-			outs(" ");
+			printf("%02x ", c);
 			// ascii string
 			ascii[i] = c;
 			c &= 0xe0;
@@ -76,33 +50,31 @@ static void mem_display8(uint16_t addr, void *ptr, size_t n) {
 			}
 			ofs++;
 		}
-		outs(ascii);
-		outs("\n");
+		printf("%s\n", ascii);
 	}
 }
-
-//-----------------------------------------------------------------------------
-
-#define REG_CLR(ptr, bits) (*(ptr) &= ~(bits))
-#define REG_SET(ptr, bits) (*(ptr) |= (bits))
 
 //-----------------------------------------------------------------------------
 
 #define DATA_IO (uint8_t *)1
 
+#define ROMSIZE (4 << 10)
+
 int main(void) {
 	uint16_t addr = 0xd000;
 	uint8_t buf[8];
 
-	while (addr < 0xd000 + (4 << 10)) {
+	while (addr < 0xd000 + ROMSIZE) {
 		SEI();
 		REG_CLR(DATA_IO, 1 << 2);
-		xmemcpy(buf, (void *)addr, sizeof(buf));
+		memcpy(buf, (void *)addr, sizeof(buf));
 		REG_SET(DATA_IO, 1 << 2);
 		CLI();
-		mem_display8(addr, buf, sizeof(buf));
+		mem_display(addr, buf, sizeof(buf));
 		addr += sizeof(buf);
 	}
 
 	return 0;
 }
+
+//-----------------------------------------------------------------------------
