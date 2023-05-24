@@ -2,3 +2,4 @@
 dl
 ext/cc65
 ext/usr
+test/*/history.txt
