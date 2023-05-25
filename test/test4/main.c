@@ -1,79 +1,153 @@
 //-----------------------------------------------------------------------------
 
+//#include <string.h>
+//#include <ctype.h>
+//#include <6502.h>
+//#include <cbm.h>
+
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
-#include <ctype.h>
-#include <6502.h>
-#include <cbm.h>
+#include <conio.h>
+#include <time.h>
+
+#include <c64.h>
+
+typedef unsigned char u8;
+typedef char s8;
 
 //-----------------------------------------------------------------------------
 
-#define REG_CLR(ptr, bits) (*(ptr) &= ~(bits))
-#define REG_SET(ptr, bits) (*(ptr) |= (bits))
+// return the current screen ram location
+uint8_t *get_screenram(void) {
+	return (uint8_t *) ((VIC.addr >> 4) << 10);
+}
 
-//-----------------------------------------------------------------------------
+#define SCREEN_RAM 0x0400
+#define SCREEN_COLOR 0xD800
 
-void *xmemcpy(void *dst, const void *src, size_t n) {
-	if (n != 0) {
-		char *d = dst;
-		const char *s = src;
-		do {
-			*d++ = *s++;
-		} while (--n != 0);
-	}
-	return dst;
+static void set_xy(u8 x, u8 y, u8 c, u8 color) {
+	uint8_t *ofs = (uint8_t *) ((40 * y) + x);
+	ofs[SCREEN_RAM] = c;
+	ofs[SCREEN_COLOR] = color;
 }
 
 //-----------------------------------------------------------------------------
 
-#define BYTES_PER_LINE 8
+typedef s8 xy[2];
+typedef xy layout[4];
 
-static void mem_display(uint16_t addr, const void *ptr, size_t n) {
-	char ascii[BYTES_PER_LINE + 1];
-	size_t ofs = 0;
+#define BG_COLOR COLOR_BLACK
 
-	n = (n + BYTES_PER_LINE - 1) & ~(BYTES_PER_LINE - 1);
-	ascii[BYTES_PER_LINE] = 0;
+#define P_CHAR 0xa0
 
-	while (ofs < n) {
-		int i;
-		printf("%04x ", addr + ofs);
-		for (i = 0; i < BYTES_PER_LINE; i++) {
-			uint8_t c = ((uint8_t *) ptr)[ofs];
-			printf("%02x ", c);
-			// ascii string
-			ascii[i] = c;
-			c &= 0xe0;
-			if ((c == 0) || (c == 0x80)) {
-				ascii[i] = '.';
-			}
-			ofs++;
+static const layout p_layout[] = {
+	// I
+	{{0, 0}, {1, 0}, {2, 0}, {-1, 0}},
+	{{0, 0}, {0, 1}, {0, 2}, {0, -1}},
+	{{0, 0}, {-1, 0}, {-2, 0}, {1, 0}},
+	{{0, 0}, {0, -1}, {0, -2}, {0, 1}},
+	// J
+	{{0, 0}, {-1, 0}, {-1, -1}, {1, 0}},
+	{{0, 0}, {0, -1}, {1, -1}, {0, 1}},
+	{{0, 0}, {1, 0}, {1, 1}, {-1, 0}},
+	{{0, 0}, {0, 1}, {-1, 1}, {0, -1}},
+	// L
+	{{0, 0}, {1, 0}, {1, -1}, {-1, 0}},
+	{{0, 0}, {0, 1}, {1, 1}, {0, -1}},
+	{{0, 0}, {-1, 0}, {-1, 1}, {1, 0}},
+	{{0, 0}, {0, -1}, {-1, -1}, {0, 1}},
+	// S
+	{{0, 0}, {0, -1}, {1, -1}, {-1, 0}},
+	{{0, 0}, {1, 0}, {1, 1}, {0, -1}},
+	{{0, 0}, {0, 1}, {-1, 1}, {1, 0}},
+	{{0, 0}, {-1, 0}, {-1, -1}, {0, 1}},
+	// Z
+	{{0, 0}, {0, -1}, {-1, -1}, {1, 0}},
+	{{0, 0}, {1, 0}, {1, -1}, {0, 1}},
+	{{0, 0}, {0, 1}, {1, 1}, {-1, 0}},
+	{{0, 0}, {-1, 0}, {-1, 1}, {0, -1}},
+	// T
+	{{0, 0}, {0, -1}, {-1, 0}, {1, 0}},
+	{{0, 0}, {1, 0}, {0, -1}, {0, 1}},
+	{{0, 0}, {0, 1}, {1, 0}, {-1, 0}},
+	{{0, 0}, {-1, 0}, {0, 1}, {0, -1}},
+	// O
+	{{0, 0}, {0, -1}, {1, -1}, {1, 0}},
+	{{0, 0}, {0, -1}, {1, -1}, {1, 0}},
+	{{0, 0}, {0, -1}, {1, -1}, {1, 0}},
+	{{0, 0}, {0, -1}, {1, -1}, {1, 0}},
+};
+
+static const u8 p_color[] = {
+	COLOR_LIGHTBLUE,	// I
+	COLOR_BLUE,		// J
+	COLOR_ORANGE,		// L
+	COLOR_GREEN,		// S
+	COLOR_RED,		// Z
+	COLOR_PURPLE,		// T
+	COLOR_YELLOW,		// O
+};
+
+static void piece(u8 x, u8 y, u8 color, const layout * p) {
+	int i;
+	for (i = 0; i < 4; i++) {
+		set_xy(x + (*p)[i][0], y + (*p)[i][1], P_CHAR, color);
+	}
+}
+
+static void piece_on(u8 id, u8 x, u8 y, u8 dirn) {
+	piece(x, y, p_color[id], &p_layout[(id << 2) + (dirn & 3)]);
+}
+
+static void piece_off(u8 id, u8 x, u8 y, u8 dirn) {
+	piece(x, y, BG_COLOR, &p_layout[(id << 2) + (dirn & 3)]);
+}
+
+static void delay(void) {
+	volatile int i;
+	for (i = 0; i < 3000; i++) {
+	}
+}
+
+void game(void) {
+	u8 dirn = 0;
+	u8 y;
+
+	clrscr();
+	bgcolor(BG_COLOR);
+
+	y = 3;
+
+	while (1) {
+		piece_on(0, 2, y, dirn);
+		piece_on(1, 7, y, dirn);
+		piece_on(2, 11, y, dirn);
+		piece_on(3, 15, y, dirn);
+		piece_on(4, 19, y, dirn);
+		piece_on(5, 23, y, dirn);
+		piece_on(6, 27, y, dirn);
+		delay();
+		piece_off(0, 2, y, dirn);
+		piece_off(1, 7, y, dirn);
+		piece_off(2, 11, y, dirn);
+		piece_off(3, 15, y, dirn);
+		piece_off(4, 19, y, dirn);
+		piece_off(5, 23, y, dirn);
+		piece_off(6, 27, y, dirn);
+		dirn += 1;
+		y += 1;
+		if (y == 20) {
+			y = 3;
 		}
-		printf("%s\n", ascii);
 	}
+
 }
 
 //-----------------------------------------------------------------------------
-
-#define DATA_IO (uint8_t *)1
-
-#define ROMSIZE (4 << 10)
 
 int main(void) {
-	uint16_t addr = 0xd000;
-	uint8_t buf[8];
-
-	while (addr < 0xd000 + ROMSIZE) {
-		SEI();
-		REG_CLR(DATA_IO, 1 << 2);
-		memcpy(buf, (void *)addr, sizeof(buf));
-		REG_SET(DATA_IO, 1 << 2);
-		CLI();
-		mem_display(addr, buf, sizeof(buf));
-		addr += sizeof(buf);
-	}
-
+	game();
+	while (1) ;
 	return 0;
 }
 
